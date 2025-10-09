@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-JWP787X20S"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-JWP787X20S');
+    </script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pusat Ajuan & Tracking - Ormawa UT Jakarta</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Google Sign-In Library -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/jwt-decode@3.1.2/build/jwt-decode.min.js"></script>
+    
+    <style>
+        body { font-family: 'Roboto', sans-serif; background-color: #f5f5f5; }
+        .font-heading { font-family: 'Poppins', sans-serif; }
+        .kanban-column { min-width: 300px; }
+        .popup-overlay { transition: opacity 0.3s ease; }
+        .popup-content { transition: transform 0.3s ease; }
+        .popup-overlay.hidden { display: none; }
+        .gsi-material-button { width: 100% !important; max-width: 24rem !important; margin: auto !important; }
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+
+    <main>
+        <!-- ===== Hero Section ===== -->
+        <header class="hero-section relative h-[50vh] md:h-[60vh] max-h-[600px] flex items-center justify-center text-white bg-[#0d47a1]">
+            <div class="relative z-10 text-center p-6">
+                <h1 class="font-heading text-4xl md:text-6xl font-extrabold uppercase tracking-wider">
+                    Pusat Ajuan
+                </h1>
+                <p class="mt-2 text-lg text-gray-200 max-w-3xl mx-auto">Ajukan dan Lacak Status Proposal Kegiatan Anda di Sini</p>
+            </div>
+        </header>
+
+        <!-- ===== Main Content Section ===== -->
+        <section class="py-16 md:py-24">
+            <div class="container mx-auto px-6">
+
+                <!-- Login Section -->
+                <div id="login-section" class="max-w-2xl mx-auto">
+                    <div class="bg-white rounded-lg shadow-xl p-8 md:p-12 text-center">
+                        <svg class="w-16 h-16 mx-auto text-yellow-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                        </svg>
+                        <h2 class="font-heading text-2xl md:text-3xl font-bold text-[#0d47a1] mt-4 mb-4">Akses Dibutuhkan</h2>
+                        <p class="text-gray-600 mb-8">Untuk mengajukan proposal baru atau melihat riwayat ajuan Anda, silakan login terlebih dahulu menggunakan akun Google Anda.</p>
+                        <!-- Google Login Button Container -->
+                        <div id="login-button-container"></div>
+                        <p id="login-error" class="text-red-500 mt-4 hidden"></p>
+                    </div>
+                </div>
+
+                <!-- Dashboard Section (Hidden by default) -->
+                <div id="dashboard-section" class="hidden">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+                        <div>
+                            <h2 class="font-heading text-3xl md:text-4xl font-bold text-[#0d47a1]">Dasbor Ajuan Anda</h2>
+                            <p id="user-greeting" class="text-gray-600"></p>
+                        </div>
+                        <button id="logout-button" class="font-heading bg-red-600 text-white font-bold py-3 px-6 rounded-full text-base uppercase hover:bg-red-700 transition-colors duration-300 w-full sm:w-auto">
+                            Logout
+                        </button>
+                    </div>
+
+                    <!-- Kanban Board -->
+                    <div class="w-full overflow-x-auto pb-4">
+                        <div id="kanban-container" class="flex gap-6">
+                            <!-- Columns will be populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+ 
+    <!-- Popups/Modals etc. remain the same -->
+    <div id="details-modal" class="popup-overlay hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="popup-content bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-8 relative">
+          <!-- Detail content will be injected here -->
+      </div>
+    </div>
+
+
+    <footer class="bg-[#212121] text-gray-300 py-12">
+        <div class="container mx-auto px-6">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+                <div class="md:col-span-4 text-center md:text-left">
+                    <img src="https://i.ibb.co.com/21LNqfQK/ORMAWA-Putih.png" alt="Logo Ormawa Putih" class="w-30 h-auto mx-auto md:mx-0">
+                    <div class="mt-4 rounded-lg overflow-hidden">
+                        <iframe src="https://www.google.com/maps/embed?pb=!1m18!m12!1m3!1d3966.011686940333!2d106.85232007475224!3d-6.26217339372934!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f3a733615967%3A0x13d55c481535359!2sUniversitas%20Terbuka%20Jakarta!5e0!3m2!1sen!2sid!4v1727639538356!5m2!1sen!2sid" width="100%" height="200" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                    </div>
+                </div>
+                <div class="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-8">
+                    <div>
+                        <h3 class="font-heading text-xl font-bold text-white mb-4">Navigasi Cepat</h3>
+                        <div class="flex flex-col space-y-2 text-sm">
+                             <a href="https://sites.google.com/view/ormawa-ut-jakarta/profil/tentang-website/syarat-ketentuan" class="hover:text-white hover:underline">📄 Syarat & Ketentuan</a>
+                             <a href="https://sites.google.com/view/ormawa-ut-jakarta/profil/tentang-website/kebijakan-privasi" class="hover:text-white hover:underline">🔒 Kebijakan Privasi</a>
+                             <a href="https://sites.google.com/view/ormawa-ut-jakarta/profil/tentang-website/disclaimer" class="hover:text-white hover:underline">⚠️ Disclaimer</a>
+                             <a href="https://sites.google.com/view/ormawa-ut-jakarta/profil/tentang-website/panduan-kontributor" class="hover:text-white hover:underline">✍️ Panduan Kontributor</a>
+                             <a href="https://sites.google.com/view/ormawa-ut-jakarta/kontak-aspirasi" class="hover:text-white hover:underline">📬 Kontak</a>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="font-heading text-xl font-bold text-white mb-4">Info Kontak</h3>
+                        <div class="text-sm space-y-2">
+                            <p><strong>📍 Alamat:</strong> <a href="https://maps.app.goo.gl/A7nQzKA2vjbeav5i8" target="_blank" class="hover:text-white hover:underline">Jl. Jenderal Ahmad Yani No.43, RT.5/RW.4, Utan Kayu Sel., Kec. Matraman, Kota Jakarta Timur, DKI Jakarta 13320</a></p>
+                            <p><strong>📞 Telepon:</strong> <a href="https://wa.link/nuxdjt" target="_blank" class="hover:text-white hover:underline">0822-7206-4457</a></p>
+                            <p><strong>📧 Email:</strong> <a href="mailto:ormawautjakarta@gmail.com" class="hover:text-white hover:underline">ormawautjakarta@gmail.com</a></p>
+                            <div class="flex space-x-4 mt-4">
+                               <a href="https://www.instagram.com/ormawa.utjakarta" target="_blank" class="hover:text-white" title="Instagram">📸 Instagram</a>
+                               <a href="https://www.tiktok.com/@ormawa.utjakarta" target="_blank" class="hover:text-white" title="TikTok">🎵 TikTok</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-6 text-center text-xs">
+                <p>© 2025 ORMAWA Universitas Terbuka Jakarta. All Rights Reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    // --- KONFIGURASI ---
+    const USERS_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTyAyyZzVcQNEebhHzQeU4kshH-Jp3_ICWMQ2JBXLk-IvwMkSrjg-l6-CSJMxo66PWDdX50zSU1SmsN/pub?gid=694220553&single=true&output=csv';
+    // PERBAIKAN: Pastikan URL sheet proposals menyertakan 'gid', 'single=true', dan 'output=csv'
+    // 'gid=0' biasanya untuk sheet pertama. Ganti '0' jika sheet Proposals Anda bukan yang pertama.
+    const PROPOSALS_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTyAyyZzVcQNEebhHzQeU4kshH-Jp3_ICWMQ2JBXLk-IvwMkSrjg-l6-CSJMxo66PWDdX50zSU1SmsN/pub?gid=0&single=true&output=csv'; 
+    const GOOGLE_CLIENT_ID = '10449530293-ra6ka58791u1f5javk771ssvpd0ifatn.apps.googleusercontent.com';
+
+    // --- UI Elements ---
+    const loginSection = document.getElementById('login-section');
+    const dashboardSection = document.getElementById('dashboard-section');
+    const loginButtonContainer = document.getElementById('login-button-container');
+    const logoutButton = document.getElementById('logout-button');
+    const kanbanContainer = document.getElementById('kanban-container');
+    const userGreeting = document.getElementById('user-greeting');
+    const detailsModal = document.getElementById('details-modal');
+    const loginError = document.getElementById('login-error');
+
+    // --- Status Configuration ---
+    const statusConfig = {
+        "Diajukan": { color: 'border-blue-500', title: 'Diajukan' },
+        "Proses Review": { color: 'border-gray-400', title: 'Proses Review' },
+        "Perlu Revisi": { color: 'border-yellow-500', title: 'Perlu Revisi' },
+        "Selesai": { color: 'border-green-500', title: 'Selesai' }
+    };
+
+    let allProposalsData = []; // To store all proposals after fetching
+
+    // --- Google Sign-In Initialization ---
+    window.onload = function () {
+        google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: handleCredentialResponse
+        });
+        google.accounts.id.renderButton(
+            loginButtonContainer,
+            { theme: "outline", size: "large", type: "standard", text: "signin_with", shape: "pill" } 
+        );
+        google.accounts.id.prompt(); // Show one-tap login prompt
+    };
+
+    // --- Login Logic ---
+    async function handleCredentialResponse(response) {
+        const userObject = jwt_decode(response.credential);
+        const userEmail = userObject.email;
+        const userName = userObject.name;
+
+        // Show loading state
+        loginButtonContainer.innerHTML = '<p class="text-gray-600">Memverifikasi...</p>';
+        loginError.classList.add('hidden');
+
+        try {
+            const authorizedUsers = await fetchCSV(USERS_SHEET_URL).then(parseCSV);
+            const isAuthorized = authorizedUsers.some(user => user.Email_Authorized.trim().toLowerCase() === userEmail.toLowerCase());
+
+            if (isAuthorized) {
+                // Store user info
+                sessionStorage.setItem('userEmail', userEmail);
+                sessionStorage.setItem('userName', userName);
+                showDashboard(userEmail, userName);
+            } else {
+                loginError.textContent = 'Akses ditolak. Email Anda tidak terdaftar.';
+                loginError.classList.remove('hidden');
+                google.accounts.id.renderButton(loginButtonContainer, { theme: "outline", size: "large" }); // Re-render button
+            }
+        } catch (error) {
+            console.error("Error during authorization:", error);
+            loginError.textContent = 'Gagal memverifikasi. Coba lagi nanti.';
+            loginError.classList.remove('hidden');
+            google.accounts.id.renderButton(loginButtonContainer, { theme: "outline", size: "large" });
+        }
+    }
+    
+    // --- Dashboard Logic ---
+    async function showDashboard(email, name) {
+        loginSection.style.display = 'none';
+        dashboardSection.style.display = 'block';
+        userGreeting.textContent = `Selamat datang, ${name}!`;
+
+        try {
+            allProposalsData = await fetchCSV(PROPOSALS_SHEET_URL).then(parseCSV);
+            const userProposals = allProposalsData.filter(p => p.Email_Pengaju && p.Email_Pengaju.trim().toLowerCase() === email.toLowerCase());
+            renderKanbanBoard(userProposals);
+        } catch (error) {
+            console.error("Error fetching proposals:", error);
+            kanbanContainer.innerHTML = '<p class="text-red-500">Gagal memuat data ajuan.</p>';
+        }
+    }
+
+    // --- Kanban Board Rendering ---
+    function renderKanbanBoard(proposals) {
+        kanbanContainer.innerHTML = ''; // Clear board
+        
+        // Group proposals by status
+        const proposalsByStatus = {};
+        Object.keys(statusConfig).forEach(status => proposalsByStatus[status] = []);
+        proposals.forEach(p => {
+            if (p.Status && proposalsByStatus[p.Status.trim()]) {
+                proposalsByStatus[p.Status.trim()].push(p);
+            }
+        });
+
+        Object.keys(statusConfig).forEach(statusKey => {
+            const columnConfig = statusConfig[statusKey];
+            const columnEl = document.createElement('div');
+            columnEl.className = 'kanban-column flex-shrink-0';
+            columnEl.innerHTML = `
+              <h3 class="font-heading text-lg font-bold text-gray-700 bg-gray-200 p-3 rounded-t-lg">${columnConfig.title}</h3>
+              <div class="p-4 bg-gray-100 rounded-b-lg space-y-4 h-full min-h-[150px]"></div>`;
+            
+            const columnContent = columnEl.querySelector('.p-4');
+            const proposalsInColumn = proposalsByStatus[statusKey];
+
+            if (proposalsInColumn.length === 0) {
+                columnContent.innerHTML = '<p class="text-sm text-gray-400 italic text-center pt-4">Tidak ada ajuan</p>';
+            } else {
+                proposalsInColumn.forEach(proposal => {
+                    const card = document.createElement('div');
+                    card.className = `bg-white p-4 rounded-md shadow-sm border-l-4 ${columnConfig.color} cursor-pointer hover:shadow-md transition-shadow`;
+                    card.dataset.id = proposal.Proposal_ID;
+                    card.innerHTML = `
+                      <p class="text-xs text-gray-500 font-mono">${proposal.Proposal_ID}</p>
+                      <p class="font-bold text-gray-800 mt-1">${proposal.Judul_Proposal}</p>
+                      <p class="text-sm text-gray-500 mt-1">${proposal.Ormawa_UKM}</p>
+                    `;
+                    card.addEventListener('click', () => showDetailsModal(proposal.Proposal_ID));
+                    columnContent.appendChild(card);
+                });
+            }
+            kanbanContainer.appendChild(columnEl);
+        });
+    }
+
+    function showDetailsModal(id) {
+        const proposalData = allProposalsData.find(p => p.Proposal_ID === id);
+        if (!proposalData) return;
+
+        const content = `
+            <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-800" onclick="document.getElementById('details-modal').classList.add('hidden')">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <h3 class="font-heading text-2xl font-bold text-[#0d47a1] mb-2">Detail Ajuan: ${proposalData.Proposal_ID}</h3>
+            <p class="text-lg text-gray-700 mb-6">${proposalData.Judul_Proposal}</p>
+            <div class="space-y-2 text-sm">
+              <p><strong>Ormawa/UKM:</strong> ${proposalData.Ormawa_UKM}</p>
+              <p><strong>Tanggal Diajukan:</strong> ${proposalData.Tgl_Diajukan}</p>
+              <p><strong>Status Saat Ini:</strong> ${proposalData.Status}</p>
+              ${proposalData.Link_Dokumen ? `<p><strong>Dokumen:</strong> <a href="${proposalData.Link_Dokumen}" target="_blank" class="text-blue-600 hover:underline">Lihat Dokumen</a></p>` : ''}
+            </div>
+            ${(proposalData.Catatan_Revisi && proposalData.Catatan_Revisi.trim()) ? `<div class="mt-4 pt-4 border-t"><p><strong>Catatan dari Ormawa:</strong></p><p class="text-yellow-800 bg-yellow-50 p-3 rounded-md mt-2">${proposalData.Catatan_Revisi}</p></div>` : ''}
+        `;
+        detailsModal.querySelector('.popup-content').innerHTML = content;
+        detailsModal.classList.remove('hidden');
+    }
+
+    // --- Utility Functions ---
+    async function fetchCSV(url) {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Network response was not ok for ${url}`);
+        }
+        return await response.text();
+    }
+
+    function parseCSV(csvText) {
+        const rows = csvText.trim().split('\r\n').filter(Boolean); // Filter empty rows
+        if(rows.length < 2) return [];
+        const headers = rows[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        return rows.slice(1).map(row => {
+            const values = row.split(',').map(v => v.trim().replace(/"/g, ''));
+            return headers.reduce((obj, header, index) => {
+                obj[header] = values[index] || '';
+                return obj;
+            }, {});
+        });
+    }
+
+    // --- Event Listeners ---
+    logoutButton.addEventListener('click', () => {
+        sessionStorage.clear();
+        location.reload();
+    });
+
+    detailsModal.addEventListener('click', (e) => {
+        if (e.target === detailsModal) {
+            detailsModal.classList.add('hidden');
+        }
+    });
+
+    // Check for existing session on page load
+    const loggedInEmail = sessionStorage.getItem('userEmail');
+    const loggedInName = sessionStorage.getItem('userName');
+    if (loggedInEmail && loggedInName) {
+        showDashboard(loggedInEmail, loggedInName);
+    }
+});
+</script>
+
+</body>
+</html>
+
