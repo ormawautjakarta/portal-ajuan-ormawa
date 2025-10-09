@@ -27,7 +27,10 @@
         .popup-overlay { transition: opacity 0.3s ease; }
         .popup-content { transition: transform 0.3s ease; }
         .popup-overlay.hidden { display: none; }
-        .gsi-material-button { width: 100% !important; max-width: 24rem !important; margin: auto !important; }
+        /* Perbaikan untuk memaksa prompt/tombol Google ke tengah */
+        #login-button-container > div {
+            margin: 0 auto !important;
+        }
     </style>
 </head>
 <body class="antialiased text-gray-800">
@@ -56,7 +59,7 @@
                         <h2 class="font-heading text-2xl md:text-3xl font-bold text-[#0d47a1] mt-4 mb-4">Akses Dibutuhkan</h2>
                         <p class="text-gray-600 mb-8">Untuk mengajukan proposal baru atau melihat riwayat ajuan Anda, silakan login terlebih dahulu menggunakan akun Google Anda.</p>
                         <!-- Google Login Button Container -->
-                        <div id="login-button-container" class="flex justify-center"></div>
+                        <div id="login-button-container"></div>
                         <p id="login-error" class="text-red-500 mt-4 hidden"></p>
                     </div>
                 </div>
@@ -68,9 +71,14 @@
                             <h2 class="font-heading text-3xl md:text-4xl font-bold text-[#0d47a1]">Dasbor Ajuan Anda</h2>
                             <p id="user-greeting" class="text-gray-600"></p>
                         </div>
-                        <button id="logout-button" class="font-heading bg-red-600 text-white font-bold py-3 px-6 rounded-full text-base uppercase hover:bg-red-700 transition-colors duration-300 w-full sm:w-auto">
-                            Logout
-                        </button>
+                        <div class="flex gap-4 w-full sm:w-auto">
+                             <button id="new-proposal-button" class="font-heading bg-green-600 text-white font-bold py-3 px-6 rounded-full text-base uppercase hover:bg-green-700 transition-colors duration-300 w-full">
+                                + Ajuan Baru
+                            </button>
+                            <button id="logout-button" class="font-heading bg-red-600 text-white font-bold py-3 px-6 rounded-full text-base uppercase hover:bg-red-700 transition-colors duration-300 w-full">
+                                Logout
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Kanban Board -->
@@ -84,7 +92,38 @@
         </section>
     </main>
  
-    <!-- Popups/Modals etc. remain the same -->
+    <!-- New Proposal Modal -->
+    <div id="new-proposal-modal" class="popup-overlay hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="popup-content bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-8 relative">
+            <button id="close-new-proposal-modal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+            <h3 class="font-heading text-2xl font-bold text-[#0d47a1] mb-6">Buat Ajuan Proposal Baru</h3>
+            <form id="new-proposal-form">
+                <div class="space-y-4">
+                    <div>
+                        <label for="proposal-title" class="block text-sm font-medium text-gray-700 text-left">Judul Proposal</label>
+                        <input type="text" id="proposal-title" name="proposal-title" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                    </div>
+                    <div>
+                        <label for="proposal-ormawa" class="block text-sm font-medium text-gray-700 text-left">Nama Ormawa/UKM</label>
+                        <input type="text" id="proposal-ormawa" name="proposal-ormawa" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" readonly>
+                    </div>
+                    <div>
+                        <label for="proposal-link" class="block text-sm font-medium text-gray-700 text-left">Link Dokumen Proposal (Google Drive)</label>
+                        <input type="url" id="proposal-link" name="proposal-link" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="https://docs.google.com/document/d/...">
+                    </div>
+                </div>
+                 <p class="text-xs text-gray-500 mt-6 text-center">Dengan mengklik "Ajukan", Anda akan diarahkan ke Google Form untuk konfirmasi akhir. Data akan otomatis tercatat di Google Sheet.</p>
+                <div class="mt-4 flex justify-end gap-4">
+                    <button type="button" id="cancel-proposal-button" class="bg-gray-200 text-gray-700 font-bold py-2 px-4 rounded-full hover:bg-gray-300">Batal</button>
+                    <button type="submit" class="bg-[#0d47a1] text-white font-bold py-2 px-4 rounded-full hover:bg-[#1e88e5]">Ajukan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Details Modal -->
     <div id="details-modal" class="popup-overlay hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div class="popup-content bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-8 relative">
           <!-- Detail content will be injected here -->
@@ -137,10 +176,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- KONFIGURASI ---
     const USERS_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTyAyyZzVcQNEebhHzQeU4kshH-Jp3_ICWMQ2JBXLk-IvwMkSrjg-l6-CSJMxo66PWDdX50zSU1SmsN/pub?gid=694220553&single=true&output=csv';
-    // PERBAIKAN: Pastikan URL sheet proposals menyertakan 'gid', 'single=true', dan 'output=csv'
-    // 'gid=0' biasanya untuk sheet pertama. Ganti '0' jika sheet Proposals Anda bukan yang pertama.
     const PROPOSALS_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTyAyyZzVcQNEebhHzQeU4kshH-Jp3_ICWMQ2JBXLk-IvwMkSrjg-l6-CSJMxo66PWDdX50zSU1SmsN/pub?gid=0&single=true&output=csv'; 
     const GOOGLE_CLIENT_ID = '10449530293-ra6ka58791u1f5javk771ssvpd0ifatn.apps.googleusercontent.com';
+    
+    // !!! PENTING: Ganti URL ini dengan link pre-filled dari Google Form Anda !!!
+    const GOOGLE_FORM_PREFILL_URL = 'https://docs.google.com/forms/d/e/YOUR_FORM_ID/viewform';
+    // Ganti entry ID ini sesuai dengan yang ada di link pre-filled Anda
+    const GOOGLE_FORM_ENTRIES = {
+        title: 'entry.123456789',
+        ormawa: 'entry.987654321',
+        link: 'entry.555555555',
+        email: 'entry.444444444'
+    };
+
 
     // --- UI Elements ---
     const loginSection = document.getElementById('login-section');
@@ -151,6 +199,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const userGreeting = document.getElementById('user-greeting');
     const detailsModal = document.getElementById('details-modal');
     const loginError = document.getElementById('login-error');
+    const newProposalModal = document.getElementById('new-proposal-modal');
+    const newProposalButton = document.getElementById('new-proposal-button');
+    const closeNewProposalModal = document.getElementById('close-new-proposal-modal');
+    const cancelProposalButton = document.getElementById('cancel-proposal-button');
+    const newProposalForm = document.getElementById('new-proposal-form');
+
+    // --- State ---
+    let allProposalsData = [];
+    let authorizedUsersData = [];
+    let currentUser = null;
 
     // --- Status Configuration ---
     const statusConfig = {
@@ -159,8 +217,6 @@ document.addEventListener('DOMContentLoaded', () => {
         "Perlu Revisi": { color: 'border-yellow-500', title: 'Perlu Revisi' },
         "Selesai": { color: 'border-green-500', title: 'Selesai' }
     };
-
-    let allProposalsData = []; // To store all proposals after fetching
 
     // --- Google Sign-In Initialization ---
     window.onload = function () {
@@ -172,50 +228,68 @@ document.addEventListener('DOMContentLoaded', () => {
             loginButtonContainer,
             { theme: "outline", size: "large", type: "standard", text: "signin_with", shape: "pill" } 
         );
-        google.accounts.id.prompt(); // Show one-tap login prompt
+        // Check for existing session on page load
+        const loggedInEmail = sessionStorage.getItem('userEmail');
+        const loggedInName = sessionStorage.getItem('userName');
+        if (loggedInEmail && loggedInName) {
+            handleLoginSuccess({ email: loggedInEmail, name: loggedInName });
+        } else {
+             google.accounts.id.prompt(); // Show one-tap login prompt if not logged in
+        }
     };
 
     // --- Login Logic ---
     async function handleCredentialResponse(response) {
         const userObject = jwt_decode(response.credential);
-        const userEmail = userObject.email;
-        const userName = userObject.name;
+        await handleLoginSuccess(userObject);
+    }
 
-        // Show loading state
-        loginButtonContainer.innerHTML = '<p class="text-gray-600">Memverifikasi...</p>';
+    async function handleLoginSuccess(userObject) {
+         loginButtonContainer.innerHTML = '<p class="text-gray-600">Memverifikasi...</p>';
         loginError.classList.add('hidden');
 
         try {
-            const authorizedUsers = await fetchCSV(USERS_SHEET_URL).then(parseCSV);
-            const isAuthorized = authorizedUsers.some(user => user.Email_Authorized.trim().toLowerCase() === userEmail.toLowerCase());
+            authorizedUsersData = await fetchCSV(USERS_SHEET_URL).then(parseCSV);
+            const authorizedUser = authorizedUsersData.find(user => user.Email_Authorized.trim().toLowerCase() === userObject.email.toLowerCase());
 
-            if (isAuthorized) {
-                // Store user info
-                sessionStorage.setItem('userEmail', userEmail);
-                sessionStorage.setItem('userName', userName);
-                showDashboard(userEmail, userName);
+            if (authorizedUser) {
+                currentUser = {
+                    email: userObject.email,
+                    name: userObject.name,
+                    ormawa: authorizedUser.Ormawa_UKM 
+                };
+                sessionStorage.setItem('userEmail', currentUser.email);
+                sessionStorage.setItem('userName', currentUser.name);
+                showDashboard();
             } else {
-                loginError.textContent = 'Akses ditolak. Email Anda tidak terdaftar.';
-                loginError.classList.remove('hidden');
-                google.accounts.id.renderButton(loginButtonContainer, { theme: "outline", size: "large" }); // Re-render button
+                handleLoginFailure('Akses ditolak. Email Anda tidak terdaftar.');
             }
         } catch (error) {
             console.error("Error during authorization:", error);
-            loginError.textContent = 'Gagal memverifikasi. Coba lagi nanti.';
-            loginError.classList.remove('hidden');
-            google.accounts.id.renderButton(loginButtonContainer, { theme: "outline", size: "large" });
+            handleLoginFailure('Gagal memverifikasi. Coba lagi nanti.');
         }
+    }
+
+    function handleLoginFailure(message) {
+        loginError.textContent = message;
+        loginError.classList.remove('hidden');
+        google.accounts.id.renderButton(loginButtonContainer, { theme: "outline", size: "large" });
     }
     
     // --- Dashboard Logic ---
-    async function showDashboard(email, name) {
+    async function showDashboard() {
         loginSection.style.display = 'none';
         dashboardSection.style.display = 'block';
-        userGreeting.textContent = `Selamat datang, ${name}!`;
+        userGreeting.textContent = `Selamat datang, ${currentUser.name}!`;
+        
+        // Pre-fill the ormawa name in the new proposal form
+        document.getElementById('proposal-ormawa').value = currentUser.ormawa;
+
 
         try {
+            kanbanContainer.innerHTML = '<p class="text-gray-600">Memuat data ajuan...</p>';
             allProposalsData = await fetchCSV(PROPOSALS_SHEET_URL).then(parseCSV);
-            const userProposals = allProposalsData.filter(p => p.Email_Pengaju && p.Email_Pengaju.trim().toLowerCase() === email.toLowerCase());
+            const userProposals = allProposalsData.filter(p => p.Email_Pengaju && p.Email_Pengaju.trim().toLowerCase() === currentUser.email.toLowerCase());
             renderKanbanBoard(userProposals);
         } catch (error) {
             console.error("Error fetching proposals:", error);
@@ -227,7 +301,6 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderKanbanBoard(proposals) {
         kanbanContainer.innerHTML = ''; // Clear board
         
-        // Group proposals by status
         const proposalsByStatus = {};
         Object.keys(statusConfig).forEach(status => proposalsByStatus[status] = []);
         proposals.forEach(p => {
@@ -240,9 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const columnConfig = statusConfig[statusKey];
             const columnEl = document.createElement('div');
             columnEl.className = 'kanban-column flex-shrink-0';
-            columnEl.innerHTML = `
-              <h3 class="font-heading text-lg font-bold text-gray-700 bg-gray-200 p-3 rounded-t-lg">${columnConfig.title}</h3>
-              <div class="p-4 bg-gray-100 rounded-b-lg space-y-4 h-full min-h-[150px]"></div>`;
+            columnEl.innerHTML = `<h3 class="font-heading text-lg font-bold text-gray-700 bg-gray-200 p-3 rounded-t-lg">${columnConfig.title}</h3><div class="p-4 bg-gray-100 rounded-b-lg space-y-4 h-full min-h-[150px]"></div>`;
             
             const columnContent = columnEl.querySelector('.p-4');
             const proposalsInColumn = proposalsByStatus[statusKey];
@@ -254,11 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const card = document.createElement('div');
                     card.className = `bg-white p-4 rounded-md shadow-sm border-l-4 ${columnConfig.color} cursor-pointer hover:shadow-md transition-shadow`;
                     card.dataset.id = proposal.Proposal_ID;
-                    card.innerHTML = `
-                      <p class="text-xs text-gray-500 font-mono">${proposal.Proposal_ID}</p>
-                      <p class="font-bold text-gray-800 mt-1">${proposal.Judul_Proposal}</p>
-                      <p class="text-sm text-gray-500 mt-1">${proposal.Ormawa_UKM}</p>
-                    `;
+                    card.innerHTML = `<p class="text-xs text-gray-500 font-mono">${proposal.Proposal_ID}</p><p class="font-bold text-gray-800 mt-1">${proposal.Judul_Proposal}</p><p class="text-sm text-gray-500 mt-1">${proposal.Ormawa_UKM}</p>`;
                     card.addEventListener('click', () => showDetailsModal(proposal.Proposal_ID));
                     columnContent.appendChild(card);
                 });
@@ -289,46 +356,74 @@ document.addEventListener('DOMContentLoaded', () => {
         detailsModal.classList.remove('hidden');
     }
 
+    // --- Modal Logic ---
+    function openNewProposalModal() { newProposalModal.classList.remove('hidden'); }
+    function closeAllModals() {
+        newProposalModal.classList.add('hidden');
+        detailsModal.classList.add('hidden');
+    }
+
+    // --- Form Submission ---
+    newProposalForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (GOOGLE_FORM_PREFILL_URL.includes('YOUR_FORM_ID')) {
+             // A simple way to notify user without using alert()
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            submitBtn.textContent = 'Konfigurasi Diperlukan!';
+            submitBtn.classList.add('bg-red-500');
+            setTimeout(() => {
+                submitBtn.textContent = 'Ajukan';
+                submitBtn.classList.remove('bg-red-500');
+            }, 3000);
+            return;
+        }
+
+        const title = document.getElementById('proposal-title').value;
+        const ormawa = document.getElementById('proposal-ormawa').value;
+        const link = document.getElementById('proposal-link').value;
+        
+        const prefilledUrl = `${GOOGLE_FORM_PREFILL_URL}?usp=pp_url&${GOOGLE_FORM_ENTRIES.title}=${encodeURIComponent(title)}&${GOOGLE_FORM_ENTRIES.ormawa}=${encodeURIComponent(ormawa)}&${GOOGLE_FORM_ENTRIES.link}=${encodeURIComponent(link)}&${GOOGLE_FORM_ENTRIES.email}=${encodeURIComponent(currentUser.email)}`;
+
+        window.open(prefilledUrl, '_blank');
+        closeAllModals();
+        newProposalForm.reset();
+    });
+
+
     // --- Utility Functions ---
     async function fetchCSV(url) {
         const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Network response was not ok for ${url}`);
-        }
+        if (!response.ok) throw new Error(`Network response was not ok for ${url}`);
         return await response.text();
     }
 
     function parseCSV(csvText) {
-        const rows = csvText.trim().split('\r\n').filter(Boolean); // Filter empty rows
-        if(rows.length < 2) return [];
+        const rows = csvText.trim().split(/\r\n|\n/).filter(Boolean);
+        if (rows.length < 2) return [];
         const headers = rows[0].split(',').map(h => h.trim().replace(/"/g, ''));
         return rows.slice(1).map(row => {
-            const values = row.split(',').map(v => v.trim().replace(/"/g, ''));
+            const values = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
             return headers.reduce((obj, header, index) => {
-                obj[header] = values[index] || '';
+                obj[header] = values[index] ? values[index].trim().replace(/"/g, '') : '';
                 return obj;
             }, {});
         });
     }
 
     // --- Event Listeners ---
+    newProposalButton.addEventListener('click', openNewProposalModal);
+    closeNewProposalModal.addEventListener('click', closeAllModals);
+    cancelProposalButton.addEventListener('click', closeAllModals);
+
     logoutButton.addEventListener('click', () => {
         sessionStorage.clear();
+        currentUser = null;
+        google.accounts.id.disableAutoSelect();
         location.reload();
     });
 
-    detailsModal.addEventListener('click', (e) => {
-        if (e.target === detailsModal) {
-            detailsModal.classList.add('hidden');
-        }
-    });
-
-    // Check for existing session on page load
-    const loggedInEmail = sessionStorage.getItem('userEmail');
-    const loggedInName = sessionStorage.getItem('userName');
-    if (loggedInEmail && loggedInName) {
-        showDashboard(loggedInEmail, loggedInName);
-    }
+    detailsModal.addEventListener('click', (e) => { if (e.target === detailsModal) closeAllModals(); });
+    newProposalModal.addEventListener('click', (e) => { if (e.target === newProposalModal) closeAllModals(); });
 });
 </script>
 
