@@ -102,15 +102,19 @@
             <form id="new-proposal-form">
                 <div class="space-y-4">
                     <div>
+                        <label for="proposal-name" class="block text-sm font-medium text-gray-700 text-left">Nama Pengaju</label>
+                        <input type="text" id="proposal-name" name="proposal-name" required class="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm sm:text-sm" readonly>
+                    </div>
+                    <div>
                         <label for="proposal-title" class="block text-sm font-medium text-gray-700 text-left">Judul Proposal</label>
                         <input type="text" id="proposal-title" name="proposal-title" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                     </div>
                     <div>
-                        <label for="proposal-ormawa" class="block text-sm font-medium text-gray-700 text-left">Nama Ormawa/UKM</label>
-                        <input type="text" id="proposal-ormawa" name="proposal-ormawa" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" readonly>
+                        <label for="proposal-ormawa" class="block text-sm font-medium text-gray-700 text-left">Nama UKM/Komunitas</label>
+                        <input type="text" id="proposal-ormawa" name="proposal-ormawa" required class="mt-1 block w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md shadow-sm sm:text-sm" readonly>
                     </div>
                     <div>
-                        <label for="proposal-link" class="block text-sm font-medium text-gray-700 text-left">Link Dokumen Proposal (Google Drive)</label>
+                        <label for="proposal-link" class="block text-sm font-medium text-gray-700 text-left">Link Dokumen Proposal</label>
                         <input type="url" id="proposal-link" name="proposal-link" required class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="https://docs.google.com/document/d/...">
                     </div>
                 </div>
@@ -135,7 +139,7 @@
         <div class="container mx-auto px-6">
             <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
                 <div class="md:col-span-4 text-center md:text-left">
-                    <img src="https://i.ibb.co/21LNqfQK/ORMAWA-Putih.png" alt="Logo Ormawa Putih" class="w-30 h-auto mx-auto md:mx-0">
+                    <img src="https://i.ibb.co.com/21LNqfQK/ORMAWA-Putih.png" alt="Logo Ormawa Putih" class="w-30 h-auto mx-auto md:mx-0">
                     <div class="mt-4 rounded-lg overflow-hidden">
                         <iframe src="https://www.google.com/maps/embed?pb=!1m18!m12!1m3!1d3966.011686940333!2d106.85232007475224!3d-6.26217339372934!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f3a733615967%3A0x13d55c481535359!2sUniversitas%20Terbuka%20Jakarta!5e0!3m2!1sen!2sid!4v1727639538356!5m2!1sen!2sid" width="100%" height="200" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
                     </div>
@@ -183,6 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const GOOGLE_FORM_PREFILL_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfNH1xtA8PS0mKJdV88zlKQGMs9dY8g3S0NM-sH7Z3vrK-cbg/viewform';
     // Ganti entry ID ini sesuai dengan yang ada di link pre-filled Anda
     const GOOGLE_FORM_ENTRIES = {
+        name: 'entry.641917687', // Placeholder, ganti dengan ID Nama Pengaju Anda
         title: 'entry.926583392',
         ormawa: 'entry.1592310391',
         link: 'entry.1698715763',
@@ -212,9 +217,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Status Configuration ---
     const statusConfig = {
-        "Diajukan": { color: 'border-blue-500', title: 'Diajukan' },
-        "Proses Review": { color: 'border-gray-400', title: 'Proses Review' },
-        "Perlu Revisi": { color: 'border-yellow-500', title: 'Perlu Revisi' },
+        "Di Ajukan": { color: 'border-blue-500', title: 'Di Ajukan' },
+        "Verifikasi Data": { color: 'border-gray-400', title: 'Verifikasi Data' },
+        "Perlu di Revisi": { color: 'border-yellow-500', title: 'Perlu di Revisi' },
         "Selesai": { color: 'border-green-500', title: 'Selesai' }
     };
 
@@ -283,6 +288,7 @@ document.addEventListener('DOMContentLoaded', () => {
         userGreeting.textContent = `Selamat datang, ${currentUser.name}!`;
         
         // Pre-fill the ormawa name in the new proposal form
+        document.getElementById('proposal-name').value = currentUser.name;
         document.getElementById('proposal-ormawa').value = currentUser.ormawa;
 
 
@@ -366,27 +372,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Form Submission ---
     newProposalForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        if (GOOGLE_FORM_PREFILL_URL.includes('YOUR_FORM_ID')) {
-             // A simple way to notify user without using alert()
-            const submitBtn = e.target.querySelector('button[type="submit"]');
-            submitBtn.textContent = 'Konfigurasi Diperlukan!';
-            submitBtn.classList.add('bg-red-500');
-            setTimeout(() => {
-                submitBtn.textContent = 'Ajukan';
-                submitBtn.classList.remove('bg-red-500');
-            }, 3000);
-            return;
-        }
 
+        const name = document.getElementById('proposal-name').value;
         const title = document.getElementById('proposal-title').value;
         const ormawa = document.getElementById('proposal-ormawa').value;
         const link = document.getElementById('proposal-link').value;
         
-        const prefilledUrl = `${GOOGLE_FORM_PREFILL_URL}?usp=pp_url&${GOOGLE_FORM_ENTRIES.title}=${encodeURIComponent(title)}&${GOOGLE_FORM_ENTRIES.ormawa}=${encodeURIComponent(ormawa)}&${GOOGLE_FORM_ENTRIES.link}=${encodeURIComponent(link)}&${GOOGLE_FORM_ENTRIES.email}=${encodeURIComponent(currentUser.email)}`;
+        const prefilledUrl = `${GOOGLE_FORM_PREFILL_URL}?usp=pp_url&${GOOGLE_FORM_ENTRIES.name}=${encodeURIComponent(name)}&${GOOGLE_FORM_ENTRIES.title}=${encodeURIComponent(title)}&${GOOGLE_FORM_ENTRIES.ormawa}=${encodeURIComponent(ormawa)}&${GOOGLE_FORM_ENTRIES.link}=${encodeURIComponent(link)}&${GOOGLE_FORM_ENTRIES.email}=${encodeURIComponent(currentUser.email)}`;
 
         window.open(prefilledUrl, '_blank');
         closeAllModals();
         newProposalForm.reset();
+        // Reset ormawa and name value after form reset
+        document.getElementById('proposal-name').value = currentUser.name;
+        document.getElementById('proposal-ormawa').value = currentUser.ormawa;
     });
 
 
@@ -429,6 +428,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
-
-
 
