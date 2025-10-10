@@ -27,9 +27,13 @@
         .popup-overlay { transition: opacity 0.3s ease; }
         .popup-content { transition: transform 0.3s ease; }
         .popup-overlay.hidden { display: none; }
-        /* Perbaikan untuk memaksa prompt/tombol Google ke tengah */
         #login-button-container > div {
             margin: 0 auto !important;
+        }
+        /* Custom style for disabled button */
+        .btn-disabled {
+            cursor: not-allowed;
+            background-color: #9ca3af; /* gray-400 */
         }
     </style>
 </head>
@@ -72,7 +76,6 @@
                         </svg>
                         <h2 class="font-heading text-2xl md:text-3xl font-bold text-[#0d47a1] mt-4 mb-4">Akses Dasbor Lengkap</h2>
                         <p class="text-gray-600 mb-8">Untuk mengajukan proposal baru atau melihat semua riwayat ajuan Anda, silakan login terlebih dahulu.</p>
-                        <!-- Google Login Button Container -->
                         <div id="login-button-container" class="flex justify-center"></div>
                         <p id="login-error" class="text-red-500 mt-4 hidden"></p>
                     </div>
@@ -95,10 +98,8 @@
                         </div>
                     </div>
 
-                    <!-- Kanban Board -->
                     <div class="w-full overflow-x-auto pb-4">
                         <div id="kanban-container" class="flex gap-6">
-                            <!-- Columns will be populated by JS -->
                         </div>
                     </div>
                 </div>
@@ -193,16 +194,14 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- KONFIGURASI ---
-    // !!! PENTING: Ganti URL ini dengan URL Web App yang Anda dapatkan setelah deploy Google Apps Script !!!
     const WEB_APP_BASE_URL = 'https://script.google.com/macros/s/AKfycbxP6OHFGFFb85GK3R6_hygKYXk6X5yFNlWTAu2MqtxP5ihb9H0nJTEwV4OINSrsnBQ8bw/exec'; 
     
-    // URL ini sekarang dinamis, mengambil data dari Web App di atas
+    // -- CORRECTED SYNTAX --
     const USERS_SHEET_URL = `${WEB_APP_BASE_URL}?sheet=users`;
     const PROPOSALS_SHEET_URL = `${WEB_APP_BASE_URL}?sheet=proposals`; 
 
     const GOOGLE_CLIENT_ID = '10449530293-ra6ka58791u1f5javk771ssvpd0ifatn.apps.googleusercontent.com';
     
-    // Konfigurasi Google Form (tidak berubah)
     const GOOGLE_FORM_PREFILL_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfNH1xtA8PS0mKJdV88zlKQGMs9dY8g3S0NM-sH7Z3vrK-cbg/viewform';
     const GOOGLE_FORM_ENTRIES = {
         name: 'entry.641917687',
@@ -276,7 +275,6 @@ document.addEventListener('DOMContentLoaded', () => {
         loginError.classList.add('hidden');
 
         try {
-            // UPDATED: Menggunakan fetchData untuk mengambil data JSON
             authorizedUsersData = await fetchData(USERS_SHEET_URL);
             const authorizedUser = authorizedUsersData.find(user => user.Email_Authorized.trim().toLowerCase() === userObject.email.toLowerCase());
 
@@ -316,7 +314,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             kanbanContainer.innerHTML = '<p class="text-gray-600">Memuat data ajuan...</p>';
-            // UPDATED: Menggunakan fetchData untuk mengambil data JSON
             allProposalsData = await fetchData(PROPOSALS_SHEET_URL);
             const userProposals = allProposalsData.filter(p => p.Email_Pengaju && p.Email_Pengaju.trim().toLowerCase() === currentUser.email.toLowerCase());
             renderKanbanBoard(userProposals);
@@ -326,9 +323,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Kanban Board Rendering (Tidak ada perubahan di fungsi ini) ---
+    // --- Kanban Board Rendering ---
     function renderKanbanBoard(proposals) {
-        kanbanContainer.innerHTML = ''; // Clear board
+        kanbanContainer.innerHTML = '';
         
         const proposalsByStatus = {};
         Object.keys(statusConfig).forEach(status => proposalsByStatus[status] = []);
@@ -363,9 +360,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- MODIFIED: showDetailsModal ---
     function showDetailsModal(id) {
         const proposalData = allProposalsData.find(p => p.Proposal_ID === id);
         if (!proposalData) return;
+
+        // NEW: Check if the status is "Perlu Revisi" to show the button
+        const isRevisionNeeded = proposalData.Status.trim() === "Perlu Revisi";
+        const revisionButtonHTML = `
+            <div class="mt-6 pt-4 border-t text-center">
+                <p class="text-sm text-gray-600 mb-3">Setelah Anda memperbaiki dokumen, klik tombol di bawah ini untuk mengirim ulang proposal Anda untuk diverifikasi.</p>
+                <button id="revision-submit-button" data-id="${proposalData.Proposal_ID}" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-full hover:bg-blue-700 transition-colors">
+                    Konfirmasi Selesai Revisi & Ajukan Ulang
+                </button>
+            </div>
+        `;
 
         const content = `
             <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-800" onclick="document.getElementById('details-modal').classList.add('hidden')">
@@ -377,13 +386,64 @@ document.addEventListener('DOMContentLoaded', () => {
               <p><strong>Ormawa/UKM:</strong> ${proposalData.Ormawa_UKM}</p>
               <p><strong>Tanggal Diajukan:</strong> ${proposalData.Tgl_Diajukan}</p>
               <p><strong>Status Saat Ini:</strong> ${proposalData.Status}</p>
-              ${proposalData.Link_Dokumen ? `<p><strong>Dokumen:</strong> <a href="${proposalData.Link_Dokumen}" target="_blank" class="text-blue-600 hover:underline">Lihat Dokumen</a></p>` : ''}
+              ${proposalData.Link_Dokumen ? `<p><strong>Dokumen:</strong> <a href="${proposalData.Link_Dokumen}" target="_blank" class="text-blue-600 hover:underline">Lihat & Perbaiki Dokumen</a></p>` : ''}
             </div>
-            ${(proposalData.Catatan_Revisi && proposalData.Catatan_Revisi.trim()) ? `<div class="mt-4 pt-4 border-t"><p><strong>Catatan dari Ormawa:</strong></p><p class="text-yellow-800 bg-yellow-50 p-3 rounded-md mt-2">${proposalData.Catatan_Revisi}</p></div>` : ''}
+            ${(proposalData.Catatan_Revisi && proposalData.Catatan_Revisi.trim()) ? `<div class="mt-4 pt-4 border-t"><p class="font-semibold text-gray-800">Catatan Revisi:</p><p class="text-yellow-800 bg-yellow-50 p-3 rounded-md mt-2">${proposalData.Catatan_Revisi}</p></div>` : ''}
+            ${isRevisionNeeded ? revisionButtonHTML : ''}
         `;
         detailsModal.querySelector('.popup-content').innerHTML = content;
+        
+        // NEW: Add event listener if the button exists
+        if (isRevisionNeeded) {
+            document.getElementById('revision-submit-button').addEventListener('click', handleRevisionSubmit);
+        }
+
         detailsModal.classList.remove('hidden');
     }
+    
+    // --- NEW: handleRevisionSubmit function ---
+    async function handleRevisionSubmit(event) {
+        const button = event.target;
+        const proposalId = button.dataset.id;
+
+        // Disable button to prevent multiple clicks
+        button.textContent = 'Mengupdate...';
+        button.disabled = true;
+        button.classList.add('btn-disabled');
+
+        try {
+            const response = await fetch(WEB_APP_BASE_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8', // Apps Script requires this header for POST
+                },
+                body: JSON.stringify({
+                    proposalId: proposalId,
+                    newStatus: 'Verifikasi Data' // The status to revert to
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                alert('Berhasil! Proposal Anda telah diajukan ulang untuk verifikasi.');
+                closeAllModals();
+                // Refresh the dashboard to show the updated data
+                await showDashboard();
+            } else {
+                throw new Error(result.message || 'Gagal memperbarui status.');
+            }
+
+        } catch (error) {
+            console.error('Error submitting revision:', error);
+            alert(`Terjadi kesalahan: ${error.message}`);
+            // Re-enable the button on error
+            button.textContent = 'Konfirmasi Selesai Revisi & Ajukan Ulang';
+            button.disabled = false;
+            button.classList.remove('btn-disabled');
+        }
+    }
+
 
     // --- Public Tracking Logic ---
     async function trackPublicProposal() {
@@ -397,7 +457,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             if (allProposalsData.length === 0) {
-                 // UPDATED: Menggunakan fetchData untuk mengambil data JSON
                 allProposalsData = await fetchData(PROPOSALS_SHEET_URL);
             }
             
@@ -429,17 +488,14 @@ document.addEventListener('DOMContentLoaded', () => {
         detailsModal.classList.add('hidden');
     }
 
-    // --- Form Submission (Tidak ada perubahan) ---
+    // --- Form Submission ---
     newProposalForm.addEventListener('submit', (e) => {
         e.preventDefault();
-
         const name = document.getElementById('proposal-name').value;
         const title = document.getElementById('proposal-title').value;
         const ormawa = document.getElementById('proposal-ormawa').value;
         const link = document.getElementById('proposal-link').value;
-        
         const prefilledUrl = `${GOOGLE_FORM_PREFILL_URL}?usp=pp_url&${GOOGLE_FORM_ENTRIES.name}=${encodeURIComponent(name)}&${GOOGLE_FORM_ENTRIES.title}=${encodeURIComponent(title)}&${GOOGLE_FORM_ENTRIES.ormawa}=${encodeURIComponent(ormawa)}&${GOOGLE_FORM_ENTRIES.link}=${encodeURIComponent(link)}&${GOOGLE_FORM_ENTRIES.email}=${encodeURIComponent(currentUser.email)}`;
-
         window.open(prefilledUrl, '_blank');
         closeAllModals();
         newProposalForm.reset();
@@ -449,34 +505,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // --- Utility Functions ---
-    // NEW: Fungsi untuk mengambil data JSON dari Web App
     async function fetchData(url) {
         const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Network response was not ok for ${url}`);
-        }
+        if (!response.ok) throw new Error(`Network response was not ok for ${url}`);
         const data = await response.json();
-        if (data.status === 'error') {
-             throw new Error(`API Error: ${data.message}`);
-        }
+        if (data.status === 'error') throw new Error(`API Error: ${data.message}`);
         return data;
     }
-    // OLD: Fungsi fetchCSV dan parseCSV sudah dihapus karena tidak diperlukan lagi.
-
 
     // --- Event Listeners ---
     newProposalButton.addEventListener('click', openNewProposalModal);
     closeNewProposalModal.addEventListener('click', closeAllModals);
     cancelProposalButton.addEventListener('click', closeAllModals);
     trackProposalButton.addEventListener('click', trackPublicProposal);
-
     logoutButton.addEventListener('click', () => {
         sessionStorage.clear();
         currentUser = null;
         google.accounts.id.disableAutoSelect();
         location.reload();
     });
-
     detailsModal.addEventListener('click', (e) => { if (e.target === detailsModal) closeAllModals(); });
     newProposalModal.addEventListener('click', (e) => { if (e.target === newProposalModal) closeAllModals(); });
 });
@@ -484,3 +531,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
+
