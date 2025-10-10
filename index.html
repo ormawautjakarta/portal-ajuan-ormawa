@@ -155,7 +155,7 @@
                 <div class="md:col-span-4 text-center md:text-left">
                     <img src="https://i.ibb.co.com/21LNqfQK/ORMAWA-Putih.png" alt="Logo Ormawa Putih" class="w-30 h-auto mx-auto md:mx-0">
                     <div class="mt-4 rounded-lg overflow-hidden">
-                        <iframe src="https://www.google.com/maps/embed?pb=!1m18!m12!1m3!1d3966.011686940333!2d106.85232007475224!3d-6.26217339372934!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f3a733615967%3A0x13d55c481535359!2sUniversitas%20Terbuka%20Jakarta!5e0!3m2!1sen!2sid!4v1727639538356!5m2!1sen!2sid" width="100%" height="200" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                        <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3966.011686940333!2d106.85232007475224!3d-6.26217339372934!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x2e69f3a733615967%3A0x13d55c481535359!2sUniversitas%20Terbuka%20Jakarta!5e0!3m2!1sen!2sid!4v1727639538356!5m2!1sen!2sid" width="100%" height="200" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
                     </div>
                 </div>
                 <div class="md:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-8">
@@ -193,13 +193,17 @@
 document.addEventListener('DOMContentLoaded', () => {
 
     // --- KONFIGURASI ---
-    const USERS_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTyAyyZzVcQNEebhHzQeU4kshH-Jp3_ICWMQ2JBXLk-IvwMkSrjg-l6-CSJMxo66PWDdX50zSU1SmsN/pub?gid=694220553&single=true&output=csv';
-    const PROPOSALS_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTyAyyZzVcQNEebhHzQeU4kshH-Jp3_ICWMQ2JBXLk-IvwMkSrjg-l6-CSJMxo66PWDdX50zSU1SmsN/pub?gid=0&single=true&output=csv'; 
+    // !!! PENTING: Ganti URL ini dengan URL Web App yang Anda dapatkan setelah deploy Google Apps Script !!!
+    const WEB_APP_BASE_URL = 'https://script.google.com/macros/s/AKfycbxP6OHFGFFb85GK3R6_hygKYXk6X5yFNlWTAu2MqtxP5ihb9H0nJTEwV4OINSrsnBQ8bw/exec'; 
+    
+    // URL ini sekarang dinamis, mengambil data dari Web App di atas
+    const USERS_SHEET_URL = `${WEB_APP_BASE_URL}?sheet=users`;
+    const PROPOSALS_SHEET_URL = `${WEB_APP_BASE_URL}?sheet=proposals`; 
+
     const GOOGLE_CLIENT_ID = '10449530293-ra6ka58791u1f5javk771ssvpd0ifatn.apps.googleusercontent.com';
     
-    // !!! PENTING: Ganti URL ini dengan link pre-filled dari Google Form Anda !!!
+    // Konfigurasi Google Form (tidak berubah)
     const GOOGLE_FORM_PREFILL_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfNH1xtA8PS0mKJdV88zlKQGMs9dY8g3S0NM-sH7Z3vrK-cbg/viewform';
-    // Ganti entry ID ini sesuai dengan yang ada di link pre-filled Anda
     const GOOGLE_FORM_ENTRIES = {
         name: 'entry.641917687',
         title: 'entry.926583392',
@@ -223,7 +227,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeNewProposalModal = document.getElementById('close-new-proposal-modal');
     const cancelProposalButton = document.getElementById('cancel-proposal-button');
     const newProposalForm = document.getElementById('new-proposal-form');
-    // New public tracking elements
     const publicTrackingSection = document.getElementById('public-tracking-section');
     const trackProposalButton = document.getElementById('track-proposal-button');
     const proposalIdInput = document.getElementById('proposal-id-input');
@@ -253,13 +256,12 @@ document.addEventListener('DOMContentLoaded', () => {
             loginButtonContainer,
             { theme: "outline", size: "large", type: "standard", text: "signin_with", shape: "pill" } 
         );
-        // Check for existing session on page load
         const loggedInEmail = sessionStorage.getItem('userEmail');
         const loggedInName = sessionStorage.getItem('userName');
         if (loggedInEmail && loggedInName) {
             handleLoginSuccess({ email: loggedInEmail, name: loggedInName });
         } else {
-             google.accounts.id.prompt(); // Show one-tap login prompt if not logged in
+             google.accounts.id.prompt(); 
         }
     };
 
@@ -270,11 +272,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function handleLoginSuccess(userObject) {
-         loginButtonContainer.innerHTML = '<p class="text-gray-600">Memverifikasi...</p>';
+        loginButtonContainer.innerHTML = '<p class="text-gray-600">Memverifikasi...</p>';
         loginError.classList.add('hidden');
 
         try {
-            authorizedUsersData = await fetchCSV(USERS_SHEET_URL).then(parseCSV);
+            // UPDATED: Menggunakan fetchData untuk mengambil data JSON
+            authorizedUsersData = await fetchData(USERS_SHEET_URL);
             const authorizedUser = authorizedUsersData.find(user => user.Email_Authorized.trim().toLowerCase() === userObject.email.toLowerCase());
 
             if (authorizedUser) {
@@ -304,18 +307,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Dashboard Logic ---
     async function showDashboard() {
         loginSection.style.display = 'none';
-        publicTrackingSection.style.display = 'none'; // Hide public tracking when logged in
+        publicTrackingSection.style.display = 'none';
         dashboardSection.style.display = 'block';
         userGreeting.textContent = `Selamat datang, ${currentUser.name}!`;
         
-        // Pre-fill the ormawa name in the new proposal form
         document.getElementById('proposal-name').value = currentUser.name;
         document.getElementById('proposal-ormawa').value = currentUser.ormawa;
 
-
         try {
             kanbanContainer.innerHTML = '<p class="text-gray-600">Memuat data ajuan...</p>';
-            allProposalsData = await fetchCSV(PROPOSALS_SHEET_URL).then(parseCSV);
+            // UPDATED: Menggunakan fetchData untuk mengambil data JSON
+            allProposalsData = await fetchData(PROPOSALS_SHEET_URL);
             const userProposals = allProposalsData.filter(p => p.Email_Pengaju && p.Email_Pengaju.trim().toLowerCase() === currentUser.email.toLowerCase());
             renderKanbanBoard(userProposals);
         } catch (error) {
@@ -324,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Kanban Board Rendering ---
+    // --- Kanban Board Rendering (Tidak ada perubahan di fungsi ini) ---
     function renderKanbanBoard(proposals) {
         kanbanContainer.innerHTML = ''; // Clear board
         
@@ -394,11 +396,11 @@ document.addEventListener('DOMContentLoaded', () => {
         trackingResult.innerHTML = `<p class="text-gray-600">Mencari...</p>`;
 
         try {
-            // Use cached data if available, otherwise fetch
             if (allProposalsData.length === 0) {
-                 allProposalsData = await fetchCSV(PROPOSALS_SHEET_URL).then(parseCSV);
+                 // UPDATED: Menggunakan fetchData untuk mengambil data JSON
+                allProposalsData = await fetchData(PROPOSALS_SHEET_URL);
             }
-           
+            
             const proposal = allProposalsData.find(p => p.Proposal_ID && p.Proposal_ID.trim().toUpperCase() === proposalID);
 
             if (proposal) {
@@ -427,7 +429,7 @@ document.addEventListener('DOMContentLoaded', () => {
         detailsModal.classList.add('hidden');
     }
 
-    // --- Form Submission ---
+    // --- Form Submission (Tidak ada perubahan) ---
     newProposalForm.addEventListener('submit', (e) => {
         e.preventDefault();
 
@@ -441,31 +443,26 @@ document.addEventListener('DOMContentLoaded', () => {
         window.open(prefilledUrl, '_blank');
         closeAllModals();
         newProposalForm.reset();
-        // Reset ormawa and name value after form reset
         document.getElementById('proposal-name').value = currentUser.name;
         document.getElementById('proposal-ormawa').value = currentUser.ormawa;
     });
 
 
     // --- Utility Functions ---
-    async function fetchCSV(url) {
+    // NEW: Fungsi untuk mengambil data JSON dari Web App
+    async function fetchData(url) {
         const response = await fetch(url);
-        if (!response.ok) throw new Error(`Network response was not ok for ${url}`);
-        return await response.text();
+        if (!response.ok) {
+            throw new Error(`Network response was not ok for ${url}`);
+        }
+        const data = await response.json();
+        if (data.status === 'error') {
+             throw new Error(`API Error: ${data.message}`);
+        }
+        return data;
     }
+    // OLD: Fungsi fetchCSV dan parseCSV sudah dihapus karena tidak diperlukan lagi.
 
-    function parseCSV(csvText) {
-        const rows = csvText.trim().split(/\r\n|\n/).filter(Boolean);
-        if (rows.length < 2) return [];
-        const headers = rows[0].split(',').map(h => h.trim().replace(/"/g, ''));
-        return rows.slice(1).map(row => {
-            const values = row.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g) || [];
-            return headers.reduce((obj, header, index) => {
-                obj[header] = values[index] ? values[index].trim().replace(/"/g, '') : '';
-                return obj;
-            }, {});
-        });
-    }
 
     // --- Event Listeners ---
     newProposalButton.addEventListener('click', openNewProposalModal);
@@ -487,4 +484,3 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
-
