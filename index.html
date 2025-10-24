@@ -523,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <p><strong>Status Saat Ini:</strong> <span class="font-semibold">${proposalData.Status || '-'}</span></p>
               ${proposalData.Link_Dokumen ? `<p><strong>Dokumen:</strong> <a href="${proposalData.Link_Dokumen}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">Lihat & Perbaiki Dokumen</a></p>` : '<p><strong>Dokumen:</strong> Link tidak tersedia</p>'}
             </div>
-            ${(proposalData.Catatan_Revisi && proposalData.Catatan_Revisi.trim()) ? `<div class="mt-4 pt-4 border-t"><p class="font-semibold text-gray-800 mb-2">Catatan Revisi:</p><p class="text-yellow-800 bg-yellow-100 p-3 rounded-md mt-1 text-sm">${proposalData.Catatan_Revisi}</p></div>` : ''}
+            ${(proposalData.Catatan && proposalData.Catatan.trim()) ? `<div class="mt-4 pt-4 border-t"><p class="font-semibold text-gray-800 mb-2">Catatan:</p><p class="text-yellow-800 bg-yellow-100 p-3 rounded-md mt-1 text-sm">${proposalData.Catatan}</p></div>` : ''}
             ${isRevisionNeeded ? revisionButtonHTML : ''}
         `;
         detailsModal.querySelector('.popup-content').innerHTML = content;
@@ -640,7 +640,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${proposal.Jenis_Ajuan ? `<p class="mt-3 text-sm"><strong>Jenis Ajuan:</strong> ${proposal.Jenis_Ajuan}</p>` : ''}
                         <p class="mt-3 text-sm"><strong>Tanggal Diajukan:</strong> ${formatDateTime(proposal.Tgl_Diajukan)}</p>
                         <p class="mt-2 text-sm"><strong>Status Saat Ini:</strong> <span class="font-semibold text-gray-900">${statusInfo.title}</span></p>
-                         ${proposal.Catatan_Revisi && statusTrimmed === 'Perlu Revisi' ? `<div class="mt-3 pt-3 border-t border-gray-200"><p class="text-sm font-semibold text-gray-800 mb-1">Catatan Revisi:</p><p class="text-sm text-yellow-800 bg-yellow-100 p-2 rounded">${proposal.Catatan_Revisi}</p></div>` : ''}
+                         ${proposal.Catatan && statusTrimmed === 'Perlu Revisi' ? `<div class="mt-3 pt-3 border-t border-gray-200"><p class="text-sm font-semibold text-gray-800 mb-1">Catatan:</p><p class="text-sm text-yellow-800 bg-yellow-100 p-2 rounded">${proposal.Catatan}</p></div>` : ''}
                     </div>
                 `;
             } else {
