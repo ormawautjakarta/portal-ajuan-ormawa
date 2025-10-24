@@ -112,6 +112,7 @@
     <!-- New Proposal Modal -->
     <div id="new-proposal-modal" class="popup-overlay hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
         <div class="popup-content bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-8 relative">
+             <!-- Tombol Tutup diperbarui -->
             <button id="close-new-proposal-modal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
@@ -161,6 +162,7 @@
     <div id="details-modal" class="popup-overlay hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div class="popup-content bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto p-8 relative">
           <!-- Detail content will be injected here by JS -->
+           <!-- Tombol Tutup akan ditambahkan oleh JS -->
       </div>
     </div>
 
@@ -240,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginError = document.getElementById('login-error');
     const newProposalModal = document.getElementById('new-proposal-modal');
     const newProposalButton = document.getElementById('new-proposal-button');
-    const closeNewProposalModal = document.getElementById('close-new-proposal-modal');
+    const closeNewProposalModalButton = document.getElementById('close-new-proposal-modal'); // <-- Tambah ID Tombol Tutup
     const cancelProposalButton = document.getElementById('cancel-proposal-button');
     const newProposalForm = document.getElementById('new-proposal-form');
     const publicTrackingSection = document.getElementById('public-tracking-section');
@@ -269,10 +271,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 client_id: GOOGLE_CLIENT_ID,
                 callback: handleCredentialResponse
             });
-            google.accounts.id.renderButton(
-                loginButtonContainer,
-                { theme: "outline", size: "large", type: "standard", text: "signin_with", shape: "pill" } 
-            );
+            // Render tombol hanya jika belum login (akan dicek di checkSession)
+            // google.accounts.id.renderButton(loginButtonContainer, { theme: "outline", size: "large", type: "standard", text: "signin_with", shape: "pill" });
             checkSession(); // Panggil fungsi untuk cek sesi
         } catch (error) {
             console.error("Gagal inisialisasi Google Sign-In:", error);
@@ -286,14 +286,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const loggedInName = sessionStorage.getItem('userName');
         if (loggedInEmail && loggedInName) {
             console.log("Sesi ditemukan, mencoba login otomatis...");
-            // Validasi ulang data pengguna (opsional tapi bagus)
             await handleLoginSuccess({ email: loggedInEmail, name: loggedInName }); 
         } else {
-             console.log("Tidak ada sesi, menampilkan prompt login.");
+             console.log("Tidak ada sesi, render tombol & tampilkan prompt.");
+             // Render tombol SEKARANG karena kita tahu belum login
+             google.accounts.id.renderButton(
+                 loginButtonContainer,
+                 { theme: "outline", size: "large", type: "standard", text: "signin_with", shape: "pill" } 
+             );
              google.accounts.id.prompt((notification) => {
                 if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                    // console.log("Prompt tidak ditampilkan atau dilewati.");
-                    // Mungkin perlu menampilkan tombol login secara manual jika prompt gagal
+                     console.log("Prompt tidak ditampilkan atau dilewati.");
                 }
              }); 
         }
@@ -324,12 +327,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             console.log("Memverifikasi pengguna:", userObject.email);
-            // Ambil data pengguna jika belum ada atau jika sudah lama
+            // Ambil data pengguna jika belum ada
             if (authorizedUsersData.length === 0) {
                  authorizedUsersData = await fetchData(USERS_SHEET_URL);
-                 // Cek jika fetchData mengembalikan error status
                  if (!Array.isArray(authorizedUsersData)) {
-                    // Jika ada properti status error dari fetchData, gunakan pesannya
                     throw new Error(authorizedUsersData.message || "Gagal mengambil data pengguna.");
                  }
             }
@@ -340,35 +341,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log("Pengguna terverifikasi:", userObject.email);
                 currentUser = {
                     email: userObject.email,
-                    name: userObject.name || authorizedUser.Nama_Pengguna || 'Pengguna', // Ambil nama dari token atau sheet
+                    name: userObject.name || authorizedUser.Nama_Pengguna || 'Pengguna', 
                     ormawa: authorizedUser.Ormawa_UKM 
                 };
                 sessionStorage.setItem('userEmail', currentUser.email);
                 sessionStorage.setItem('userName', currentUser.name);
-                await showDashboard(); // Pastikan dashboard ditampilkan setelah user diset
+                await showDashboard(); 
             } else {
                 console.warn("Akses ditolak untuk:", userObject.email);
                 handleLoginFailure('Akses ditolak. Email Anda tidak terdaftar.');
-                // Logout paksa jika login sebelumnya tapi tidak valid lagi
                 sessionStorage.clear(); 
             }
         } catch (error) {
             console.error("Error saat otorisasi:", error);
             handleLoginFailure(`Gagal memverifikasi: ${error.message}. Coba lagi nanti.`);
-             sessionStorage.clear(); // Hapus sesi jika verifikasi gagal
+             sessionStorage.clear(); 
         }
     }
 
     function handleLoginFailure(message) {
         loginError.textContent = message;
         loginError.classList.remove('hidden');
-        // Pastikan tombol login muncul kembali jika belum ada
-        if (!document.querySelector("#login-button-container > div")) {
-             try {
-                  google.accounts.id.renderButton(loginButtonContainer, { theme: "outline", size: "large" });
-             } catch (e) { console.error("Gagal merender tombol login saat failure:", e); }
-        }
-        // Sembunyikan dashboard jika login gagal
+        // Kosongkan container dan render ulang tombol jika gagal
+        loginButtonContainer.innerHTML = ''; 
+        try {
+             google.accounts.id.renderButton(loginButtonContainer, { theme: "outline", size: "large" });
+        } catch (e) { console.error("Gagal merender tombol login saat failure:", e); }
+       
         dashboardSection.classList.add('hidden'); 
         loginSection.style.display = 'block'; 
         publicTrackingSection.style.display = 'block'; 
@@ -376,7 +375,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- Logika Dasbor ---
     async function showDashboard() {
-        // Pastikan currentUser sudah ada
         if (!currentUser) {
             console.error("currentUser belum diset saat showDashboard dipanggil.");
             handleLoginFailure("Sesi tidak valid, silakan login ulang.");
@@ -386,11 +384,10 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Menampilkan dasbor untuk:", currentUser.email);
         loginSection.style.display = 'none';
         publicTrackingSection.style.display = 'none';
-        dashboardSection.classList.remove('hidden'); // Gunakan classList untuk toggle display
-        dashboardSection.style.display = 'block'; // Pastikan display block
+        dashboardSection.classList.remove('hidden'); 
+        dashboardSection.style.display = 'block'; 
         userGreeting.textContent = `Selamat datang, ${currentUser.name}!`;
         
-        // Isi form dengan data pengguna saat ini
         try {
             document.getElementById('proposal-name').value = currentUser.name;
             document.getElementById('proposal-ormawa').value = currentUser.ormawa;
@@ -398,10 +395,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
         try {
-            kanbanContainer.innerHTML = '<p class="text-gray-600 animate-pulse">Memuat data ajuan...</p>'; // Loading state
+            kanbanContainer.innerHTML = '<p class="text-gray-600 animate-pulse">Memuat data ajuan...</p>'; 
             allProposalsData = await fetchData(PROPOSALS_SHEET_URL);
             
-             // Cek jika fetchData mengembalikan error status
              if (!Array.isArray(allProposalsData)) {
                 throw new Error(allProposalsData.message || "Gagal mengambil data proposal.");
              }
@@ -417,55 +413,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Render Papan Kanban ---
     function renderKanbanBoard(proposals) {
-        kanbanContainer.innerHTML = ''; // Kosongkan papan
+        kanbanContainer.innerHTML = ''; 
         
-        // Buat objek untuk mengelompokkan proposal berdasarkan status
         const proposalsByStatus = {};
         Object.keys(statusConfig).forEach(status => proposalsByStatus[status] = []);
         
-        // Masukkan proposal ke grup yang sesuai
         proposals.forEach(p => {
             const statusTrimmed = p.Status ? p.Status.trim() : null;
-            if (statusTrimmed && proposalsByStatus[statusTrimmed] !== undefined) { // Check if key exists
+            if (statusTrimmed && proposalsByStatus[statusTrimmed] !== undefined) { 
                 proposalsByStatus[statusTrimmed].push(p);
             } else if (statusTrimmed) {
-                console.warn(`Status "${statusTrimmed}" dari proposal ${p.Proposal_ID} tidak dikenal atau tidak ada di statusConfig.`);
-                // Opsional: Buat grup 'Lainnya' jika ada status tak dikenal
+                console.warn(`Status "${statusTrimmed}" dari proposal ${p.Proposal_ID} tidak dikenal.`);
                 if (!proposalsByStatus['Lainnya']) proposalsByStatus['Lainnya'] = { proposals: [], title: 'Status Lainnya', color: 'border-gray-500' };
                 proposalsByStatus['Lainnya'].proposals.push(p);
             }
         });
 
-        // Buat kolom untuk setiap status di statusConfig (dan grup 'Lainnya' jika ada)
         Object.keys(proposalsByStatus).forEach(statusKey => {
-             // Handle grup 'Lainnya'
              const isOtherStatus = statusKey === 'Lainnya';
              const columnConfig = isOtherStatus ? proposalsByStatus[statusKey] : statusConfig[statusKey];
              const proposalsInColumn = isOtherStatus ? proposalsByStatus[statusKey].proposals : proposalsByStatus[statusKey];
 
-             // Pastikan columnConfig ada (seharusnya selalu ada karena kita iterasi keys dari proposalsByStatus)
              if (!columnConfig) return; 
 
             const columnEl = document.createElement('div');
-            // Sedikit penyesuaian lebar kolom agar lebih fleksibel
             columnEl.className = 'kanban-column flex-shrink-0 w-full sm:w-[48%] md:w-[31%] lg:w-[23%] xl:w-[19%]'; 
-            columnEl.innerHTML = `<h3 class="font-heading text-lg font-bold text-gray-700 bg-gray-200 p-3 rounded-t-lg sticky top-0 z-10">${columnConfig.title}</h3><div class="p-4 bg-gray-100 rounded-b-lg space-y-4 h-[60vh] min-h-[250px] overflow-y-auto"></div>`; // Tinggi tetap & scroll
+            columnEl.innerHTML = `<h3 class="font-heading text-lg font-bold text-gray-700 bg-gray-200 p-3 rounded-t-lg sticky top-0 z-10">${columnConfig.title}</h3><div class="p-4 bg-gray-100 rounded-b-lg space-y-4 h-[60vh] min-h-[250px] overflow-y-auto"></div>`; 
             
-            const columnContent = columnEl.querySelector('div:last-child'); // Target div konten yang benar
+            const columnContent = columnEl.querySelector('div:last-child'); 
 
             if (!proposalsInColumn || proposalsInColumn.length === 0) {
                 columnContent.innerHTML = '<p class="text-sm text-gray-400 italic text-center pt-4">Tidak ada ajuan</p>';
             } else {
-                // Urutkan proposal di kolom (misal berdasarkan Tgl_Diajukan terbaru)
                 proposalsInColumn.sort((a, b) => {
                     try {
-                        const dateA = a.Tgl_Diajukan ? new Date(a.Tgl_Diajukan) : new Date(0); // Fallback ke awal epoch
+                        const dateA = a.Tgl_Diajukan ? new Date(a.Tgl_Diajukan) : new Date(0); 
                         const dateB = b.Tgl_Diajukan ? new Date(b.Tgl_Diajukan) : new Date(0);
-                        if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) return 0; // Jangan sort jika tanggal tidak valid
-                        return dateB - dateA; // Descending
-                    } catch (e) {
-                        return 0; 
-                    }
+                        if (isNaN(dateA.getTime()) || isNaN(dateB.getTime())) return 0; 
+                        return dateB - dateA; 
+                    } catch (e) { return 0; }
                 });
 
                 proposalsInColumn.forEach(proposal => {
@@ -473,7 +459,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const borderColor = columnConfig.color || 'border-gray-500'; 
                     card.className = `bg-white p-4 rounded-md shadow border-l-4 ${borderColor} cursor-pointer hover:shadow-md transition-shadow duration-150`;
                     card.dataset.id = proposal.Proposal_ID;
-                    // Menggunakan Jenis_Ajuan dari data
                     const proposalTypeBadge = proposal.Jenis_Ajuan ? `<span class="text-xs font-semibold inline-block py-1 px-2.5 leading-none text-center whitespace-nowrap align-baseline bg-blue-100 text-blue-700 rounded-full mt-2">${proposal.Jenis_Ajuan}</span>` : '';
                     
                     card.innerHTML = `
@@ -494,7 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function showDetailsModal(id) {
         const proposalData = allProposalsData.find(p => p.Proposal_ID === id);
         if (!proposalData) {
-            console.error(`Proposal dengan ID ${id} tidak ditemukan di data.`);
+            console.error(`Proposal dengan ID ${id} tidak ditemukan.`);
             alert("Gagal memuat detail proposal.");
             return;
         }
@@ -503,7 +488,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isRevisionNeeded = statusTrimmed === "Perlu Revisi";
         const revisionButtonHTML = `
             <div class="mt-6 pt-4 border-t text-center">
-                <p class="text-sm text-gray-600 mb-3">Setelah Anda memperbaiki dokumen, klik tombol di bawah ini untuk mengirim ulang proposal Anda untuk diverifikasi.</p>
+                <p class="text-sm text-gray-600 mb-3">Setelah memperbaiki dokumen, klik tombol di bawah ini untuk mengirim ulang proposal.</p>
                 <button id="revision-submit-button" data-id="${proposalData.Proposal_ID}" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-full hover:bg-blue-700 transition-colors duration-200">
                     Konfirmasi Selesai Revisi & Ajukan Ulang
                 </button>
@@ -511,35 +496,48 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
         `;
 
+        // === Tombol Tutup DIPERBARUI ===
         const content = `
-            <button class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 transition-colors" onclick="closeAllModals()">
+             <button id="close-details-modal-button" class="absolute top-4 right-4 text-gray-400 hover:text-gray-800 transition-colors"> 
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
             <h3 class="font-heading text-2xl font-bold text-[#0d47a1] mb-2">Detail Ajuan: ${proposalData.Proposal_ID || ''}</h3>
             <p class="text-lg text-gray-700 mb-6">${proposalData.Judul_Proposal || ''}</p>
             <div class="space-y-3 text-sm border-t pt-4">
               <p><strong>Ormawa/UKM:</strong> ${proposalData.Ormawa_UKM || '-'}</p>
-               <!-- Menggunakan Jenis_Ajuan dari data -->
               ${proposalData.Jenis_Ajuan ? `<p><strong>Jenis Ajuan:</strong> ${proposalData.Jenis_Ajuan}</p>` : ''} 
               <p><strong>Tanggal Diajukan:</strong> ${formatDateTime(proposalData.Tgl_Diajukan)}</p>
               <p><strong>Status Saat Ini:</strong> <span class="font-semibold">${proposalData.Status || '-'}</span></p>
               ${proposalData.Link_Dokumen ? `<p><strong>Dokumen:</strong> <a href="${proposalData.Link_Dokumen}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">Lihat & Perbaiki Dokumen</a></p>` : '<p><strong>Dokumen:</strong> Link tidak tersedia</p>'}
             </div>
-             <!-- Menggunakan kolom 'Catatan' -->
             ${(proposalData.Catatan && proposalData.Catatan.trim()) ? `<div class="mt-4 pt-4 border-t"><p class="font-semibold text-gray-800 mb-2">Catatan:</p><p class="text-sm bg-gray-100 text-gray-800 p-3 rounded-md mt-1">${proposalData.Catatan}</p></div>` : ''}
             ${isRevisionNeeded ? revisionButtonHTML : ''}
         `;
-        detailsModal.querySelector('.popup-content').innerHTML = content;
+        // === Akhir Perubahan ===
+
+        const modalContentElement = detailsModal.querySelector('.popup-content');
+        if (modalContentElement) {
+             modalContentElement.innerHTML = content;
         
-        // Tambahkan event listener jika tombol revisi ada
-        if (isRevisionNeeded) {
-            const revisionButton = document.getElementById('revision-submit-button');
-             if (revisionButton) {
-                  revisionButton.addEventListener('click', handleRevisionSubmit);
-             } else {
-                  console.error("Tombol revisi tidak ditemukan di DOM.");
+             // === Tambah Listener untuk Tombol Tutup Baru ===
+             const closeButton = modalContentElement.querySelector('#close-details-modal-button');
+             if (closeButton) {
+                 closeButton.addEventListener('click', closeAllModals);
              }
+             // === Akhir Penambahan Listener ===
+
+             if (isRevisionNeeded) {
+                 const revisionButton = modalContentElement.querySelector('#revision-submit-button');
+                 if (revisionButton) {
+                      revisionButton.addEventListener('click', handleRevisionSubmit);
+                 } else {
+                      console.error("Tombol revisi tidak ditemukan di DOM setelah render.");
+                 }
+             }
+        } else {
+             console.error("Elemen .popup-content tidak ditemukan di detailsModal");
         }
+
 
         detailsModal.classList.remove('hidden');
     }
@@ -548,12 +546,12 @@ document.addEventListener('DOMContentLoaded', () => {
     async function handleRevisionSubmit(event) {
         const button = event.target;
         const proposalId = button.dataset.id;
-        const statusElement = document.getElementById('revision-submit-status'); // Elemen untuk menampilkan status
+        const statusElement = document.getElementById('revision-submit-status'); 
 
         button.textContent = 'Mengupdate...';
         button.disabled = true;
         button.classList.add('btn-disabled');
-        if(statusElement) statusElement.textContent = ''; // Hapus status sebelumnya
+        if(statusElement) statusElement.textContent = ''; 
 
         try {
             const response = await fetch(WEB_APP_BASE_URL, {
@@ -561,19 +559,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 
                     'Content-Type': 'text/plain;charset=utf-8', 
                 },
-                // Body tetap sama, mengirim ID dan status baru
                 body: JSON.stringify({
                     proposalId: proposalId,
                     newStatus: 'Verifikasi Data' 
                 })
             });
 
-             // Error Handling Response
              if (!response.ok) {
                  let errorMsg = `HTTP error! status: ${response.status}`;
                  try {
                      const errBody = await response.text();
-                     errorMsg += ` - ${errBody.substring(0, 100)}`; // Tampilkan sebagian body error
+                     errorMsg += ` - ${errBody.substring(0, 100)}`; 
                  } catch {}
                  throw new Error(errorMsg);
              }
@@ -591,10 +587,9 @@ document.addEventListener('DOMContentLoaded', () => {
                  }
                  setTimeout(async () => {
                      closeAllModals();
-                     await showDashboard(); // Refresh dasbor
+                     await showDashboard(); 
                  }, 1500);
             } else {
-                // Gunakan pesan error dari server jika ada
                 throw new Error(result.message || 'Gagal memperbarui status dari server.');
             }
 
@@ -604,7 +599,6 @@ document.addEventListener('DOMContentLoaded', () => {
                   statusElement.textContent = `Gagal: ${error.message}`;
                   statusElement.className = 'text-sm mt-2 text-red-600';
              }
-            // Aktifkan kembali tombol jika error
             button.textContent = 'Konfirmasi Selesai Revisi & Ajukan Ulang';
             button.disabled = false;
             button.classList.remove('btn-disabled');
@@ -620,13 +614,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        trackingResult.innerHTML = `<p class="text-gray-600 animate-pulse">Mencari proposal...</p>`; // Animasi loading
+        trackingResult.innerHTML = `<p class="text-gray-600 animate-pulse">Mencari proposal...</p>`; 
 
         try {
-            // Selalu fetch data terbaru untuk tracking publik
             const allPublicProposals = await fetchData(PROPOSALS_SHEET_URL); 
              if (!Array.isArray(allPublicProposals)) {
-                 // Jika fetch gagal, tampilkan pesan error
                 throw new Error(allPublicProposals.message || "Gagal mengambil data proposal.");
              }
             
@@ -640,11 +632,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <div class="bg-gray-50 border-l-4 ${statusInfo.color} p-5 rounded-lg text-left shadow">
                         <p class="font-bold text-lg text-gray-800 mb-1">${proposal.Judul_Proposal || 'Judul Tidak Tersedia'}</p>
                         <p class="text-sm text-gray-600">${proposal.Ormawa_UKM || 'Ormawa Tidak Tersedia'}</p>
-                         <!-- Menggunakan Jenis_Ajuan dari data -->
                         ${proposal.Jenis_Ajuan ? `<p class="mt-3 text-sm"><strong>Jenis Ajuan:</strong> ${proposal.Jenis_Ajuan}</p>` : ''}
                         <p class="mt-3 text-sm"><strong>Tanggal Diajukan:</strong> ${formatDateTime(proposal.Tgl_Diajukan)}</p>
                         <p class="mt-2 text-sm"><strong>Status Saat Ini:</strong> <span class="font-semibold text-gray-900">${statusInfo.title}</span></p>
-                         <!-- Menampilkan 'Catatan' jika ada -->
                          ${proposal.Catatan && proposal.Catatan.trim() ? `<div class="mt-3 pt-3 border-t border-gray-200"><p class="text-sm font-semibold text-gray-800 mb-1">Catatan:</p><p class="text-sm bg-gray-100 text-gray-800 p-2 rounded">${proposal.Catatan}</p></div>` : ''}
                     </div>
                 `;
@@ -660,13 +650,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Logika Modal ---
     function openNewProposalModal() { 
-        // Reset form sebelum dibuka
         newProposalForm.reset(); 
          if (currentUser) {
-            try { // Tambah try-catch untuk elemen yg mungkin belum ada
+            try { 
                  document.getElementById('proposal-name').value = currentUser.name;
                  document.getElementById('proposal-ormawa').value = currentUser.ormawa;
-            } catch (e) {console.error("Elemen form tidak ditemukan saat openNewProposalModal:", e)}
+            } catch (e) {console.error("Elemen form tidak ditemukan:", e)}
          }
         newProposalModal.classList.remove('hidden'); 
     }
@@ -679,7 +668,6 @@ document.addEventListener('DOMContentLoaded', () => {
     newProposalForm.addEventListener('submit', (e) => {
         e.preventDefault();
         
-        // Validasi
         const name = document.getElementById('proposal-name').value;
         const title = document.getElementById('proposal-title').value;
         const ormawa = document.getElementById('proposal-ormawa').value;
@@ -689,32 +677,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const type = typeSelect.value; 
 
         if (!name || !title || !ormawa || !link || !type) {
-            alert("Harap lengkapi semua field sebelum mengajukan.");
+            alert("Harap lengkapi semua field.");
             return;
         }
-        // Validasi URL sederhana
-        try {
-           new URL(link);
-        } catch (_) {
-           alert("Link Dokumen Proposal tidak valid. Pastikan menggunakan http:// atau https://");
-           linkInput.focus();
-           return;
-        }
+        try { new URL(link); } 
+        catch (_) { alert("Link Dokumen tidak valid."); linkInput.focus(); return; }
         
-        // Cek jika ID entry type sudah diganti
         if (GOOGLE_FORM_ENTRIES.type === 'ENTRY_ID_JENIS_AJUAN_ANDA') {
-             alert("Konfigurasi error: ID Entry untuk Jenis Ajuan belum diatur dalam kode JavaScript.");
-             return; 
+             alert("Konfigurasi error: ID Entry Jenis Ajuan belum diatur."); return; 
         }
-
-        // Pastikan currentUser ada sebelum mengambil email
         if (!currentUser || !currentUser.email) {
-            alert("Sesi pengguna tidak ditemukan. Silakan login ulang.");
-            // Arahkan ke login atau refresh?
-            location.reload(); 
-            return;
+            alert("Sesi pengguna tidak valid. Login ulang."); location.reload(); return;
         }
-
 
         const prefilledUrl = `${GOOGLE_FORM_PREFILL_URL}?usp=pp_url` +
                              `&${GOOGLE_FORM_ENTRIES.name}=${encodeURIComponent(name)}` +
@@ -724,73 +698,46 @@ document.addEventListener('DOMContentLoaded', () => {
                              `&${GOOGLE_FORM_ENTRIES.email}=${encodeURIComponent(currentUser.email)}` + 
                              `&${GOOGLE_FORM_ENTRIES.type}=${encodeURIComponent(type)}`; 
 
-        console.log("Membuka URL Prefill:", prefilledUrl); // Log URL untuk debugging
+        console.log("Membuka URL Prefill:", prefilledUrl); 
         window.open(prefilledUrl, '_blank');
-        
         closeAllModals(); 
-        // Tidak perlu reset form lagi di sini karena sudah direset saat modal dibuka
     });
 
 
     // --- Fungsi Utilitas ---
     function formatDateTime(dateInput) {
-        if (!dateInput || String(dateInput).trim() === '') return 'Tidak ada tanggal';
+        // ... (Fungsi formatDateTime tetap sama) ...
+         if (!dateInput || String(dateInput).trim() === '') return 'Tidak ada tanggal';
         try {
-            // Coba parsing sebagai ISO 8601 dulu (format paling umum dari API/Sheet)
             let date = new Date(dateInput);
-            
-            // Jika ISO gagal, coba format DD/MM/YYYY HH:MM atau variasinya
             if (isNaN(date.getTime())) {
                  const parts = String(dateInput).split(/[\/\- :]/); 
                  if (parts.length >= 3) {
-                      // Hati-hati asumsi DD/MM vs MM/DD. Coba DD/MM dulu.
                       const day = parseInt(parts[0], 10);
-                      const month = parseInt(parts[1], 10) - 1; // Month 0-indexed
+                      const month = parseInt(parts[1], 10) - 1; 
                       let year = parseInt(parts[2], 10);
-                      // Handle tahun 2 digit (misal '25' -> 2025) - Hati-hati ambiguitas
                       if (year < 100) { year += 2000; } 
-                      
                       let hours = 0, minutes = 0, seconds = 0;
                       if (parts.length >= 5) {
                            hours = parseInt(parts[3], 10) || 0;
                            minutes = parseInt(parts[4], 10) || 0;
                       }
-                      if (parts.length >= 6) {
-                            seconds = parseInt(parts[5], 10) || 0;
-                      }
-                      
-                      // Buat objek Date dari parts
-                      date = new Date(Date.UTC(year, month, day, hours, minutes, seconds)); // Gunakan UTC untuk konsistensi
-
-                      // Validasi ulang setelah parsing alternatif
+                      if (parts.length >= 6) { seconds = parseInt(parts[5], 10) || 0; }
+                      date = new Date(Date.UTC(year, month, day, hours, minutes, seconds)); 
                       if (isNaN(date.getTime())) {
-                          console.warn("Gagal mem-parsing tanggal (format alternatif):", dateInput);
-                          return String(dateInput); // Kembalikan string asli jika semua gagal
+                          console.warn("Gagal parsing tanggal (alt):", dateInput); return String(dateInput); 
                       }
                  } else {
-                      console.warn("Gagal mem-parsing tanggal (tidak cukup parts):", dateInput);
-                      return String(dateInput); // Kembalikan string asli jika format aneh
+                      console.warn("Gagal parsing tanggal (parts):", dateInput); return String(dateInput); 
                  }
             }
-            
-            // Format output jika parsing berhasil
-            // Gunakan toLocaleString untuk format lokal (lebih fleksibel)
-            return date.toLocaleString('id-ID', { 
-                day: '2-digit', 
-                month: '2-digit', 
-                year: 'numeric', 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: false // Format 24 jam
-            }).replace(/\./g, ':'); // Ganti titik pemisah waktu jadi :
-
+            return date.toLocaleString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).replace(/\./g, ':'); 
         } catch (error) {
-            console.error("Error saat format tanggal:", dateInput, error);
-            return String(dateInput); // Kembalikan string asli jika ada error tak terduga
+            console.error("Error format tanggal:", dateInput, error); return String(dateInput); 
         }
     }
 
-    // Fungsi Fetch dengan penanganan error lebih baik
+    // --- Fungsi Fetch (Tetap Sama) ---
    async function fetchData(url) {
         try {
             const response = await fetch(url);
@@ -798,14 +745,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 let errorBody = `HTTP error ${response.status}`;
                 try { 
                     const text = await response.text();
-                    // Coba ekstrak pesan error dari HTML Apps Script jika ada
                      if (text.includes('<title>Error')) {
                          const match = text.match(/<pre>.*?<\/pre>/s);
                          errorBody = `Apps Script Error: ${match ? match[0].replace(/<\/?pre>/g,'').trim() : 'Detail tidak tersedia'}`;
-                     } else {
-                          errorBody += `: ${text.substring(0, 150)}`; // Tampilkan potongan body
-                     }
-                } catch (e) { /* Abaikan jika body tidak bisa dibaca */ }
+                     } else { errorBody += `: ${text.substring(0, 150)}`; }
+                } catch (e) { /* Abaikan */ }
                 throw new Error(errorBody);
             }
             
@@ -815,55 +759,51 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const data = await response.json();
-            if (data && data.status === 'error') {
-                throw new Error(`API Error: ${data.message}`);
-            }
-            // Pastikan data yang dikembalikan adalah array jika sukses (untuk users/proposals)
+            if (data && data.status === 'error') { throw new Error(`API Error: ${data.message}`); }
+            
             if (url.includes('sheet=users') || url.includes('sheet=proposals')) {
-                 if (!Array.isArray(data)) {
-                      console.warn("Data diterima tapi bukan array:", data);
-                      return []; // Kembalikan array kosong jika format tidak sesuai
-                 }
+                 if (!Array.isArray(data)) { console.warn("Data bukan array:", data); return []; }
             }
             return data; 
         } catch (error) {
             console.error(`Fetch error dari ${url}:`, error);
-            // Kembalikan objek error agar bisa ditangani
             return { status: 'error', message: error.message }; 
         }
     }
 
     // --- Event Listeners Global ---
     newProposalButton.addEventListener('click', openNewProposalModal);
-    closeNewProposalModal.addEventListener('click', closeAllModals);
+    // === DIPERBARUI: Listener tombol tutup modal ajuan baru ===
+    if(closeNewProposalModalButton) {
+        closeNewProposalModalButton.addEventListener('click', closeAllModals);
+    } else { console.error("Tombol closeNewProposalModal tidak ditemukan"); }
+    // === Akhir Perubahan ===
     cancelProposalButton.addEventListener('click', closeAllModals);
     trackProposalButton.addEventListener('click', trackPublicProposal);
+    
+    // === DIPERBARUI: Logika Logout ===
     logoutButton.addEventListener('click', () => {
         console.log("Logout initiated...");
-        sessionStorage.clear();
-        currentUser = null;
+        sessionStorage.clear(); // Hapus data sesi
+        currentUser = null;     // Hapus state pengguna
         try {
-            google.accounts.id.disableAutoSelect();
-            google.accounts.id.revoke(sessionStorage.getItem('userEmail') || '', done => {
-                console.log('Google session revoked.');
-                 // Render ulang tombol login setelah logout komplit
-                 loginButtonContainer.innerHTML = ''; 
-                 google.accounts.id.renderButton(loginButtonContainer, { theme: "outline", size: "large" });
-                 dashboardSection.classList.add('hidden');
-                 loginSection.style.display = 'block';
-                 publicTrackingSection.style.display = 'block';
-                 // location.reload(); // Mungkin tidak perlu jika UI diupdate manual
-            });
+            google.accounts.id.disableAutoSelect(); // Nonaktifkan login otomatis berikutnya
+            // Coba revoke token, tapi jangan hentikan logout jika gagal
+            const userEmail = sessionStorage.getItem('userEmail'); // Ambil email sebelum clear
+            if (userEmail) {
+                google.accounts.id.revoke(userEmail, done => {
+                    console.log('Google session revoked:', done.error);
+                });
+            }
         } catch (e) {
-            console.error("Error during Google logout:", e);
-             // Tetap lanjutkan proses logout UI
-             loginButtonContainer.innerHTML = ''; 
-             try { google.accounts.id.renderButton(loginButtonContainer, { theme: "outline", size: "large" }); } catch {}
-             dashboardSection.classList.add('hidden');
-             loginSection.style.display = 'block';
-             publicTrackingSection.style.display = 'block';
+            console.error("Error during Google session management on logout:", e);
+        } finally {
+             // Selalu reload halaman untuk reset UI
+             location.reload(); 
         }
     });
+    // === Akhir Perubahan Logout ===
+
     // Tutup modal jika klik di luar
     detailsModal.addEventListener('click', (e) => { if (e.target === detailsModal) closeAllModals(); });
     newProposalModal.addEventListener('click', (e) => { if (e.target === newProposalModal) closeAllModals(); });
@@ -871,7 +811,7 @@ document.addEventListener('DOMContentLoaded', () => {
      // Lacak saat menekan Enter di input ID
      proposalIdInput.addEventListener('keypress', function (e) {
         if (e.key === 'Enter') {
-            e.preventDefault(); // Cegah submit form jika ada
+            e.preventDefault(); 
             trackPublicProposal();
         }
     });
@@ -881,6 +821,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
-
-
 
