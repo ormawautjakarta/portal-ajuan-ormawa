@@ -218,14 +218,14 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const GOOGLE_FORM_PREFILL_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfNH1xtA8PS0mKJdV88zlKQGMs9dY8g3S0NM-sH7Z3vrK-cbg/viewform';
     
-    // !!! PENTING: GANTI ID ENTRY DI BAWAH INI !!!
+    // !!! PENTING: ID ENTRY SUDAH BENAR !!!
     const GOOGLE_FORM_ENTRIES = {
         name: 'entry.641917687',    // ID untuk Nama Pengaju
         title: 'entry.926583392',   // ID untuk Judul Proposal
         ormawa: 'entry.1592310391', // ID untuk Nama UKM/Komunitas
         link: 'entry.1698715763',   // ID untuk Link Dokumen
         email: 'entry.176009538',  // ID untuk Email Pengaju (tersembunyi?)
-        type: 'entry.426297314'   // ID untuk Jenis Ajuan (Pastikan ini benar!)
+        type: 'entry.426297314'   // ID untuk Jenis Ajuan 
     };
 
 
@@ -523,7 +523,8 @@ document.addEventListener('DOMContentLoaded', () => {
               <p><strong>Status Saat Ini:</strong> <span class="font-semibold">${proposalData.Status || '-'}</span></p>
               ${proposalData.Link_Dokumen ? `<p><strong>Dokumen:</strong> <a href="${proposalData.Link_Dokumen}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline">Lihat & Perbaiki Dokumen</a></p>` : '<p><strong>Dokumen:</strong> Link tidak tersedia</p>'}
             </div>
-            ${(proposalData.Catatan && proposalData.Catatan.trim()) ? `<div class="mt-4 pt-4 border-t"><p class="font-semibold text-gray-800 mb-2">Catatan:</p><p class="text-yellow-800 bg-yellow-100 p-3 rounded-md mt-1 text-sm">${proposalData.Catatan}</p></div>` : ''}
+             <!-- Diperbarui: Menggunakan kolom 'Catatan' -->
+            ${(proposalData.Catatan && proposalData.Catatan.trim()) ? `<div class="mt-4 pt-4 border-t"><p class="font-semibold text-gray-800 mb-2">Catatan:</p><p class="text-sm bg-gray-100 text-gray-800 p-3 rounded-md mt-1">${proposalData.Catatan}</p></div>` : ''}
             ${isRevisionNeeded ? revisionButtonHTML : ''}
         `;
         detailsModal.querySelector('.popup-content').innerHTML = content;
@@ -640,7 +641,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         ${proposal.Jenis_Ajuan ? `<p class="mt-3 text-sm"><strong>Jenis Ajuan:</strong> ${proposal.Jenis_Ajuan}</p>` : ''}
                         <p class="mt-3 text-sm"><strong>Tanggal Diajukan:</strong> ${formatDateTime(proposal.Tgl_Diajukan)}</p>
                         <p class="mt-2 text-sm"><strong>Status Saat Ini:</strong> <span class="font-semibold text-gray-900">${statusInfo.title}</span></p>
-                         ${proposal.Catatan && statusTrimmed === 'Perlu Revisi' ? `<div class="mt-3 pt-3 border-t border-gray-200"><p class="text-sm font-semibold text-gray-800 mb-1">Catatan:</p><p class="text-sm text-yellow-800 bg-yellow-100 p-2 rounded">${proposal.Catatan}</p></div>` : ''}
+                         <!-- Diperbarui: Menampilkan 'Catatan' jika ada, tidak tergantung status -->
+                         ${proposal.Catatan && proposal.Catatan.trim() ? `<div class="mt-3 pt-3 border-t border-gray-200"><p class="text-sm font-semibold text-gray-800 mb-1">Catatan:</p><p class="text-sm bg-gray-100 text-gray-800 p-2 rounded">${proposal.Catatan}</p></div>` : ''}
                     </div>
                 `;
             } else {
@@ -876,4 +878,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
 </body>
 </html>
+
 
