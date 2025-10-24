@@ -267,7 +267,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             google.accounts.id.initialize({
                 client_id: GOOGLE_CLIENT_ID,
-                callback: handleCredentialResponse
+                callback: handleCredentialResponse,
+                use_fedcm_for_prompt: false // <-- Ditambahkan untuk potensi fix FedCM
             });
             checkSession(); 
         } catch (error) {
@@ -285,21 +286,22 @@ document.addEventListener('DOMContentLoaded', () => {
             await handleLoginSuccess({ email: loggedInEmail, name: loggedInName }); 
         } else {
              console.log("Tidak ada sesi, render tombol & tampilkan prompt.");
-             // Render tombol jika container tombol ada
              if(loginButtonContainer) {
-                 google.accounts.id.renderButton(
-                     loginButtonContainer,
-                     { theme: "outline", size: "large", type: "standard", text: "signin_with", shape: "pill" } 
-                 );
-             } else {
-                 console.error("loginButtonContainer tidak ditemukan.");
-             }
+                 try {
+                     google.accounts.id.renderButton(
+                         loginButtonContainer,
+                         { theme: "outline", size: "large", type: "standard", text: "signin_with", shape: "pill" } 
+                     );
+                 } catch(e) { console.error("Gagal render tombol Google:", e); }
+             } else { console.error("loginButtonContainer tidak ditemukan."); }
              
-             google.accounts.id.prompt((notification) => {
-                if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-                     console.log("Prompt tidak ditampilkan atau dilewati.");
-                }
-             }); 
+             try {
+                 google.accounts.id.prompt((notification) => {
+                    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+                         console.log("Prompt tidak ditampilkan atau dilewati.");
+                    }
+                 }); 
+             } catch (e) { console.error("Gagal menampilkan prompt Google:", e); }
         }
     }
 
@@ -365,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loginError.classList.remove('hidden');
         }
         if(loginButtonContainer) {
-            loginButtonContainer.innerHTML = ''; // Kosongkan dulu
+            loginButtonContainer.innerHTML = ''; 
             try {
                  google.accounts.id.renderButton(loginButtonContainer, { theme: "outline", size: "large" });
             } catch (e) { console.error("Gagal merender tombol login saat failure:", e); }
@@ -418,7 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Render Papan Kanban ---
     function renderKanbanBoard(proposals) {
-        if(!kanbanContainer) return; // Pastikan container ada
+        if(!kanbanContainer) return; 
         kanbanContainer.innerHTML = ''; 
         
         const proposalsByStatus = {};
@@ -521,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
         // === Akhir Perubahan ===
 
-        const modalContentElement = detailsModal ? detailsModal.querySelector('.popup-content') : null; // Cek detailsModal dulu
+        const modalContentElement = detailsModal ? detailsModal.querySelector('.popup-content') : null; 
         if (modalContentElement) {
              modalContentElement.innerHTML = content;
         
@@ -544,7 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
              console.error("Elemen .popup-content atau detailsModal tidak ditemukan.");
         }
 
-        if(detailsModal) detailsModal.classList.remove('hidden'); // Tampilkan modal
+        if(detailsModal) detailsModal.classList.remove('hidden'); 
     }
     
     // --- Tangani Pengajuan Ulang Revisi ---
@@ -593,7 +595,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Logika Pelacakan Publik ---
     async function trackPublicProposal() {
-        const proposalID = proposalIdInput ? proposalIdInput.value.trim().toUpperCase() : ''; // Cek proposalIdInput
+        const proposalID = proposalIdInput ? proposalIdInput.value.trim().toUpperCase() : ''; 
         if (!proposalID) {
             if(trackingResult) trackingResult.innerHTML = `<p class="text-red-500">Silakan masukkan ID Proposal.</p>`;
             return;
@@ -645,6 +647,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(newProposalModal) newProposalModal.classList.remove('hidden'); 
     }
     function closeAllModals() {
+         console.log("closeAllModals dipanggil"); // <-- Tambahkan log
          if(newProposalModal) newProposalModal.classList.add('hidden');
          if(detailsModal) detailsModal.classList.add('hidden');
     }
@@ -654,7 +657,7 @@ document.addEventListener('DOMContentLoaded', () => {
         newProposalForm.addEventListener('submit', (e) => {
             e.preventDefault();
             
-            const name = document.getElementById('proposal-name')?.value; // Tambah ? (optional chaining)
+            const name = document.getElementById('proposal-name')?.value; 
             const title = document.getElementById('proposal-title')?.value;
             const ormawa = document.getElementById('proposal-ormawa')?.value;
             const linkInput = document.getElementById('proposal-link');
@@ -668,7 +671,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try { new URL(link); } 
             catch (_) { alert("Link Dokumen tidak valid."); if(linkInput) linkInput.focus(); return; }
             
-            if (GOOGLE_FORM_ENTRIES.type === 'ENTRY_ID_JENIS_AJUAN_ANDA') {
+            if (GOOGLE_FORM_ENTRIES.type === 'ENTRY_ID_JENIS_AJUAN_ANDA') { // <-- Tetap cek placeholder ini
                  alert("Konfigurasi error: ID Entry Jenis Ajuan belum diatur."); return; 
             }
             if (!currentUser || !currentUser.email) {
@@ -703,9 +706,9 @@ document.addEventListener('DOMContentLoaded', () => {
                       if (isNaN(date.getTime())) { console.warn("Gagal parsing tanggal (alt):", dateInput); return String(dateInput); }
                  } else { console.warn("Gagal parsing tanggal (parts):", dateInput); return String(dateInput); }
             }
-            // Gunakan format id-ID yang lebih eksplisit
             const options = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' };
-            return new Intl.DateTimeFormat('id-ID', options).format(date).replace(/\./g, ':'); 
+            // Perbaiki penggantian titik menjadi titik dua (lebih aman pakai replaceAll)
+            return new Intl.DateTimeFormat('id-ID', options).format(date).replaceAll('.', ':'); 
 
         } catch (error) { console.error("Error format tanggal:", dateInput, error); return String(dateInput); }
     }
@@ -718,12 +721,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 let errorBody = `HTTP error ${response.status}`;
                 try { 
                     const text = await response.text();
-                     if (text.includes('<title>Error') || text.includes('Gagal memproses permintaan')) { // Tambah cek error Apps Script lain
-                         const match = text.match(/<pre>.*?<\/pre>/s); // Coba ekstrak <pre>
+                     if (text.includes('<title>Error') || text.includes('Gagal memproses permintaan')) { 
+                         const match = text.match(/<pre>.*?<\/pre>/s); 
                          if (match) {
                              errorBody = `Apps Script Error: ${match[0].replace(/<\/?pre>/g,'').trim()}`;
                          } else {
-                              // Coba cari pesan error umum Apps Script
                               const genericMatch = text.match(/<div class="errorMessage">(.*?)<\/div>/s);
                               errorBody = `Apps Script Error: ${genericMatch ? genericMatch[1].trim() : 'Detail tidak tersedia'}`;
                          }
@@ -734,30 +736,24 @@ document.addEventListener('DOMContentLoaded', () => {
             
              if (!response.headers.get("content-type")?.includes("application/json")) {
                  const textResponse = await response.text();
-                  // Jika respons adalah HTML tapi bukan error, mungkin masalah deployment?
                   if (textResponse.startsWith('<!DOCTYPE html>')) {
-                      throw new Error("Respons dari server adalah halaman HTML, bukan data JSON. Periksa URL Web App atau deployment.");
+                      throw new Error("Respons server adalah HTML, bukan JSON. Periksa URL/deployment.");
                   }
                  throw new Error(`Respons bukan JSON: ${textResponse.substring(0, 100)}...`);
             }
 
             const data = await response.json();
-            // Periksa explicit error status dari JSON respons
-            if (data && data.status === 'error') { 
-                 throw new Error(`API Error dari Apps Script: ${data.message}`); 
-            }
+            if (data && data.status === 'error') { throw new Error(`API Error: ${data.message}`); }
             
-            // Validasi tipe data yang diharapkan
             if (url.includes('sheet=users') || url.includes('sheet=proposals')) {
                  if (!Array.isArray(data)) { 
-                     console.warn(`Data dari ${url} diterima tapi bukan array:`, data); 
-                     throw new Error(`Format data tidak sesuai dari ${url}. Diharapkan array.`); // Lebih baik throw error
+                     console.warn(`Data dari ${url} bukan array:`, data); 
+                     throw new Error(`Format data tidak sesuai dari ${url}.`); 
                  }
             }
             return data; // Sukses
         } catch (error) {
             console.error(`Fetch error dari ${url}:`, error);
-            // Kembalikan objek error agar bisa ditangani
             return { status: 'error', message: error.message }; 
         }
     }
@@ -769,40 +765,41 @@ document.addEventListener('DOMContentLoaded', () => {
     if(cancelProposalButton) cancelProposalButton.addEventListener('click', closeAllModals);
     if(trackProposalButton) trackProposalButton.addEventListener('click', trackPublicProposal);
     
-    // === Logika Logout DIPERBARUI ===
+    // === Logika Logout DIPERBARUI & LEBIH SEDERHANA ===
     if(logoutButton) {
         logoutButton.addEventListener('click', () => {
             console.log("Logout initiated...");
-            sessionStorage.clear(); // Hapus data sesi
-            currentUser = null;     // Hapus state pengguna lokal
+            sessionStorage.clear(); // Hapus sesi JS
+            currentUser = null;     
             
             try {
-                // Nonaktifkan login otomatis untuk klik berikutnya
-                google.accounts.id.disableAutoSelect(); 
-                
-                // Coba revoke token (best effort, jangan hentikan logout jika gagal)
-                const userEmail = sessionStorage.getItem('userEmail'); // Ambil sebelum clear (meskipun sudah di-clear) - Seharusnya tidak ada
-                if (userEmail) { // Kemungkinan ini tidak akan pernah jalan setelah clear
-                    google.accounts.id.revoke(userEmail, done => {
-                        console.log('Google session revoked attempt:', done?.error || 'Success');
-                    });
-                } else {
-                     console.log("Tidak ada email di session storage untuk revoke.");
+                // Nonaktifkan login otomatis Google (best effort)
+                if (google && google.accounts && google.accounts.id) {
+                    google.accounts.id.disableAutoSelect(); 
+                    // Revoke tidak terlalu penting dan bisa kompleks, skip dulu
+                    // const userEmail = sessionStorage.getItem('userEmail'); // Sudah clear
+                    // if(userEmail) google.accounts.id.revoke(userEmail, () => {});
                 }
             } catch (e) {
                 console.error("Error during Google session management on logout:", e);
             } finally {
-                 // **Cara paling reliable untuk reset UI adalah reload**
-                 console.log("Reloading page for clean logout state.");
+                 // **Paksa reload halaman untuk reset UI**
+                 console.log("Reloading page...");
                  location.reload(); 
             }
         });
-    } else { console.error("Tombol logout tidak ditemukan."); }
+    } else { console.error("Tombol logout (#logout-button) tidak ditemukan."); }
     // === Akhir Perubahan Logout ===
 
     // Tutup modal jika klik di luar
-    if(detailsModal) detailsModal.addEventListener('click', (e) => { if (e.target === detailsModal) closeAllModals(); });
-    if(newProposalModal) newProposalModal.addEventListener('click', (e) => { if (e.target === newProposalModal) closeAllModals(); });
+    if(detailsModal) detailsModal.addEventListener('click', (e) => { 
+        console.log("Klik di luar modal detail terdeteksi"); // <-- Tambahkan log
+        if (e.target === detailsModal) closeAllModals(); 
+    });
+    if(newProposalModal) newProposalModal.addEventListener('click', (e) => { 
+        console.log("Klik di luar modal ajuan baru terdeteksi"); // <-- Tambahkan log
+        if (e.target === newProposalModal) closeAllModals(); 
+    });
 
      // Lacak saat menekan Enter di input ID
      if(proposalIdInput) {
