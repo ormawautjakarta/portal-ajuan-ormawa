@@ -510,7 +510,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const borderColor = columnConfig.color || 'border-gray-500'; 
                     card.className = `bg-white p-4 rounded-md shadow border-l-4 ${borderColor} cursor-pointer hover:shadow-md transition-shadow duration-150`;
                     card.dataset.id = proposal.Proposal_ID;
-                    const communityName = proposal.Nama_Komunitas_Mahasiswa || 'Komunitas ?'; 
                     const proposalTypeBadge = proposal.Jenis_Ajuan ? `<span class="text-xs font-semibold inline-block py-1 px-2.5 leading-none text-center whitespace-nowrap align-baseline bg-blue-100 text-blue-700 rounded-full mt-2">${proposal.Jenis_Ajuan}</span>` : '';
                     
                     card.innerHTML = `
