@@ -187,7 +187,6 @@
                     <div>
                         <h3 class="font-heading text-xl font-bold text-white mb-4">Navigasi Cepat</h3>
                         <div class="flex flex-col space-y-2 text-sm">
-                             <a href="https://sites.google.com/view/ormawa-ut-jakarta/profil/tentang-website" class="hover:text-white hover:underline">📘 Tentang Website</a>
                              <a href="https://sites.google.com/view/ormawa-ut-jakarta/profil/tentang-website/syarat-ketentuan" class="hover:text-white hover:underline">📄 Syarat & Ketentuan</a>
                              <a href="https://sites.google.com/view/ormawa-ut-jakarta/profil/tentang-website/kebijakan-privasi" class="hover:text-white hover:underline">🔒 Kebijakan Privasi</a>
                              <a href="https://sites.google.com/view/ormawa-ut-jakarta/profil/tentang-website/disclaimer" class="hover:text-white hover:underline">⚠️ Disclaimer</a>
@@ -203,10 +202,7 @@
                             <p><strong>📧 Email:</strong> <a href="mailto:ormawautjakarta@gmail.com" class="hover:text-white hover:underline">ormawautjakarta@gmail.com</a></p>
                             <div class="flex space-x-4 mt-4">
                                <a href="https://www.instagram.com/ormawa.utjakarta" target="_blank" class="hover:text-white" title="Instagram">📸 Instagram</a>
-                               <a href="https://www.tiktok.com/@ormawa.ut_jakarta" target="_blank" class="hover:text-white" title="TikTok">🎵 TikTok</a>
-                               <a href="https://twitter.com/ormawautjkt" target="_blank" class="hover:text-white" title="Twitter">🐦 Twitter</a>
-                               <a href="https://www.facebook.com/" target="_blank" class="hover:text-white" title="Facebook">📘 Facebook</a>
-                               <a href="https://www.youtube.com/" target="_blank" class="hover:text-white" title="YouTube">▶️ YouTube</a>
+                               <a href="https://www.tiktok.com/@ormawa.utjakarta" target="_blank" class="hover:text-white" title="TikTok">🎵 TikTok</a>
                             </div>
                         </div>
                     </div>
@@ -260,7 +256,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const trackProposalButton = document.getElementById('track-proposal-button');
     const proposalIdInput = document.getElementById('proposal-id-input');
     const trackingResult = document.getElementById('tracking-result');
-    // === BARU: Referensi Tombol Arsip ===
     const showArchiveToggle = document.getElementById('show-archive-toggle');
 
     // --- State ---
@@ -268,14 +263,14 @@ document.addEventListener('DOMContentLoaded', () => {
     let authorizedUsersData = [];
     let currentUser = null;
 
-    // === DIPERBARUI: Tambahkan Status Diarsipkan ===
+    // --- Status Configuration ---
     const statusConfig = {
         "Verifikasi Data": { color: 'border-gray-400', title: 'Verifikasi Data' },
         "Perlu Revisi": { color: 'border-yellow-500', title: 'Perlu Revisi' },
         "Sedang Pengajuan": { color: 'border-blue-500', title: 'Sedang Pengajuan' },
         "ACC Direktur": { color: 'border-cyan-500', title: 'ACC Direktur'}, 
         "Selesai": { color: 'border-green-500', title: 'Selesai' },
-        "Diarsipkan": { color: 'border-gray-300', title: 'Diarsipkan' } // Status baru
+        "Diarsipkan": { color: 'border-gray-300', title: 'Diarsipkan' } 
     };
 
     // --- Inisialisasi Google Sign-In ---
@@ -325,7 +320,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // === FUNGSI DIPERBARUI (Penanganan Error) ===
     async function handleLoginSuccess(userObject) {
         if (!userObject || !userObject.email) { console.error("Objek user tidak valid:", userObject); handleLoginFailure("Data user tidak lengkap."); return; }
 
@@ -338,7 +332,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (authorizedUsersData.length === 0) {
                  const userDataResult = await fetchData(USERS_SHEET_URL);
                  
-                 // Pengecekan error yang lebih baik
                  if (userDataResult && userDataResult.status === 'error') {
                      throw new Error(userDataResult.message);
                  }
@@ -359,7 +352,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentUser = {
                     email: userObject.email,
                     name: userObject.name || authorizedUser.Nama_Pengguna || 'Pengguna', 
-                    community: authorizedUser.Nama_Komunitas_Mahasiswa || 'Komunitas ?' 
+                    // === DIPERBARUI: Default ke string kosong ===
+                    community: authorizedUser.Nama_Komunitas_Mahasiswa || '' 
                 };
                 sessionStorage.setItem('userEmail', currentUser.email);
                 sessionStorage.setItem('userName', currentUser.name);
@@ -428,7 +422,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // Tambahkan listener ke toggle SETELAH data siap
             if(showArchiveToggle) {
                 // Hapus listener lama jika ada (untuk mencegah duplikat)
-                // Ini cara yg lebih aman daripada replaceWith
                 const newToggle = showArchiveToggle.cloneNode(true);
                 showArchiveToggle.parentNode.replaceChild(newToggle, showArchiveToggle);
                 
@@ -453,16 +446,14 @@ document.addEventListener('DOMContentLoaded', () => {
         kanbanContainer.innerHTML = ''; 
 
         // === DIPERBARUI: Baca toggle DARI DALAM FUNGSI ===
-        // Ini memastikan kita selalu mendapatkan elemen terbaru, terutama setelah cloneNode
         const toggle = document.getElementById('show-archive-toggle'); 
         const showArchive = toggle ? toggle.checked : false;
         console.log(`Render Kanban, Tampilkan Arsip: ${showArchive}`);
         
         const proposalsByStatus = {};
         Object.keys(statusConfig).forEach(status => {
-             // JANGAN buat grup status "Diarsipkan" jika toggle tidak aktif
              if (status === "Diarsipkan" && !showArchive) {
-                 return; // Lewati status ini
+                 return; // Lewati
              }
             proposalsByStatus[status] = [];
         });
@@ -473,8 +464,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (statusTrimmed && proposalsByStatus[statusTrimmed] !== undefined) { 
                 proposalsByStatus[statusTrimmed].push(p);
             } 
-            else if (statusTrimmed && statusTrimmed !== "Diarsipkan") { // <-- Jangan log "Diarsipkan" sebagai tidak dikenal
-                console.warn(`Status "${statusTrimmed}" (ID: ${p.Proposal_ID}) tidak dikenal atau tidak ada di config.`);
+            else if (statusTrimmed && statusTrimmed !== "Diarsipkan") { 
+                console.warn(`Status "${statusTrimmed}" (ID: ${p.Proposal_ID}) tidak dikenal.`);
                 if (!proposalsByStatus['Lainnya']) proposalsByStatus['Lainnya'] = { proposals: [], title: 'Status Lainnya', color: 'border-gray-500' };
                 proposalsByStatus['Lainnya'].proposals.push(p);
             }
@@ -510,6 +501,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const borderColor = columnConfig.color || 'border-gray-500'; 
                     card.className = `bg-white p-4 rounded-md shadow border-l-4 ${borderColor} cursor-pointer hover:shadow-md transition-shadow duration-150`;
                     card.dataset.id = proposal.Proposal_ID;
+                    // === DIPERBARUI: Fallback ke string kosong ===
+                    const communityName = proposal.Nama_Komunitas_Mahasiswa || ''; 
                     const proposalTypeBadge = proposal.Jenis_Ajuan ? `<span class="text-xs font-semibold inline-block py-1 px-2.5 leading-none text-center whitespace-nowrap align-baseline bg-blue-100 text-blue-700 rounded-full mt-2">${proposal.Jenis_Ajuan}</span>` : '';
                     
                     card.innerHTML = `
@@ -736,7 +729,6 @@ document.addEventListener('DOMContentLoaded', () => {
                  } else { console.warn("Gagal parsing tanggal (parts):", dateInput); return String(dateInput); }
             }
             const options = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' };
-            // *** DIPERBARUI: Ganti semua titik (.); ***
             return new Intl.DateTimeFormat('id-ID', options).format(date).replace(/\./g, ':'); 
         } catch (error) { console.error("Error format tanggal:", dateInput, error); return String(dateInput); }
     }
@@ -744,7 +736,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // === FUNGSI FETCH DIPERBARUI ===
    async function fetchData(url) {
         try {
-            // Tambahkan cache-busting parameter unik
             const cacheBustUrl = `${url}${url.includes('?') ? '&' : '?'}t=${new Date().getTime()}`;
             const response = await fetch(cacheBustUrl, { cache: "no-store" }); 
 
@@ -757,7 +748,7 @@ document.addEventListener('DOMContentLoaded', () => {
                          if (match) {
                              errorBody = `Apps Script Error: ${match[0].replace(/<\/?pre>/g,'').trim()}`;
                          } else {
-                              const genericMatch = text.match(/<div class.*="errorMessage">(.*?)<\/div>/s); // Dibuat lebih umum
+                              const genericMatch = text.match(/<div class.*="errorMessage">(.*?)<\/div>/s); 
                               errorBody = `Apps Script Error: ${genericMatch ? genericMatch[1].trim() : text.substring(0, 150)}`;
                          }
                      } else { errorBody += `: ${text.substring(0, 150)}`; }
@@ -775,7 +766,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await response.json();
             
-            // Pengecekan error eksplisit dari JSON Apps Script
             if (data && data.status === 'error') { 
                 throw new Error(`API Error: ${data.message}`); 
             }
