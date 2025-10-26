@@ -98,6 +98,14 @@
                             </button>
                         </div>
                     </div>
+                    
+                    <!-- === BARU: Tombol Tampilkan Arsip === -->
+                    <div class="flex justify-end items-center mb-4">
+                        <input type="checkbox" id="show-archive-toggle" class="h-4 w-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300">
+                        <label for="show-archive-toggle" class="ml-2 block text-sm font-medium text-gray-700">Tampilkan Arsip</label>
+                    </div>
+                    <!-- === AKHIR PERUBAHAN === -->
+
 
                     <div class="w-full overflow-x-auto pb-4">
                         <div id="kanban-container" class="flex gap-6">
@@ -223,11 +231,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const GOOGLE_FORM_PREFILL_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfNH1xtA8PS0mKJdV88zlKQGMs9dY8g3S0NM-sH7Z3vrK-cbg/viewform';
     
-    // !!! PENTING: Perbarui ID Entry 'community' jika nama pertanyaan di Form berubah !!!
     const GOOGLE_FORM_ENTRIES = {
         name: 'entry.641917687',    // ID untuk Nama Pengaju
         title: 'entry.926583392',   // ID untuk Judul Proposal
-        community: 'entry.1592310391', // ID untuk Nama Komunitas Mahasiswa (!!) VERIFIKASI ID INI (!!)
+        community: 'entry.1592310391', // ID untuk Nama Komunitas Mahasiswa
         link: 'entry.1698715763',   // ID untuk Link Dokumen
         email: 'entry.176009538',  // ID untuk Email Pengaju
         type: 'entry.426297314'   // ID untuk Jenis_Ajuan 
@@ -249,24 +256,26 @@ document.addEventListener('DOMContentLoaded', () => {
     const cancelProposalButton = document.getElementById('cancel-proposal-button');
     const newProposalForm = document.getElementById('new-proposal-form');
     const proposalCommunityInput = document.getElementById('proposal-community'); 
-
     const publicTrackingSection = document.getElementById('public-tracking-section');
     const trackProposalButton = document.getElementById('track-proposal-button');
     const proposalIdInput = document.getElementById('proposal-id-input');
     const trackingResult = document.getElementById('tracking-result');
+    // === BARU: Referensi Tombol Arsip ===
+    const showArchiveToggle = document.getElementById('show-archive-toggle');
 
     // --- State ---
     let allProposalsData = [];
     let authorizedUsersData = [];
     let currentUser = null;
 
-    // --- Status Configuration ---
+    // === DIPERBARUI: Tambahkan Status Diarsipkan ===
     const statusConfig = {
         "Verifikasi Data": { color: 'border-gray-400', title: 'Verifikasi Data' },
         "Perlu Revisi": { color: 'border-yellow-500', title: 'Perlu Revisi' },
         "Sedang Pengajuan": { color: 'border-blue-500', title: 'Sedang Pengajuan' },
         "ACC Direktur": { color: 'border-cyan-500', title: 'ACC Direktur'}, 
-        "Selesai": { color: 'border-green-500', title: 'Selesai' }
+        "Selesai": { color: 'border-green-500', title: 'Selesai' },
+        "Diarsipkan": { color: 'border-gray-300', title: 'Diarsipkan' } // Status baru
     };
 
     // --- Inisialisasi Google Sign-In ---
@@ -316,13 +325,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // === FUNGSI DIPERBARUI ===
     async function handleLoginSuccess(userObject) {
-        if (!userObject || !userObject.email) { 
-            console.error("Objek user tidak valid:", userObject); 
-            handleLoginFailure("Data user tidak lengkap."); 
-            return; 
-        }
+        if (!userObject || !userObject.email) { console.error("Objek user tidak valid:", userObject); handleLoginFailure("Data user tidak lengkap."); return; }
 
         if(loginButtonContainer) loginButtonContainer.innerHTML = '<p class="text-gray-600">Memverifikasi...</p>';
         if(loginError) loginError.classList.add('hidden');
@@ -330,11 +334,9 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             console.log("Verifikasi:", userObject.email);
             
-            // Ambil data pengguna HANYA jika cache kosong
             if (authorizedUsersData.length === 0) {
                  const userDataResult = await fetchData(USERS_SHEET_URL);
                  
-                 // Pengecekan error yang lebih baik
                  if (userDataResult && userDataResult.status === 'error') {
                      throw new Error(userDataResult.message);
                  }
@@ -342,7 +344,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error("Hasil fetchData(USERS_SHEET_URL) bukan array:", userDataResult);
                     throw new Error("Format data pengguna tidak dikenali."); 
                  }
-                 authorizedUsersData = userDataResult; // Simpan data jika sukses
+                 authorizedUsersData = userDataResult; 
             }
             
             const authorizedUser = authorizedUsersData.find(user => 
@@ -368,7 +370,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error("Error otorisasi:", error);
-            // Pastikan error adalah objek Error
             const errorMessage = (error instanceof Error) ? error.message : String(error);
             handleLoginFailure(`Gagal memverifikasi: ${errorMessage}`); 
             sessionStorage.clear(); 
@@ -393,6 +394,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // --- Logika Dasbor ---
+    // === DIPERBARUI: Tambah listener untuk toggle arsip ===
     async function showDashboard() {
         if (!currentUser) { console.error("currentUser null."); handleLoginFailure("Sesi tidak valid."); return; }
         
@@ -416,9 +418,27 @@ document.addEventListener('DOMContentLoaded', () => {
              }
              allProposalsData = proposalDataResult; 
 
+            // Ambil proposal pengguna (data mentah)
             const userProposals = allProposalsData.filter(p => p.Email_Pengaju && p.Email_Pengaju.trim().toLowerCase() === currentUser.email.toLowerCase());
-            console.log(`Menemukan ${userProposals.length} proposal.`);
+            console.log(`Menemukan ${userProposals.length} total proposal.`);
+            
+            // Render papan KANBAN untuk pertama kali
             renderKanbanBoard(userProposals);
+
+            // Tambahkan listener ke toggle SETELAH data siap
+            if(showArchiveToggle) {
+                // Hapus listener lama jika ada (untuk mencegah duplikat)
+                showArchiveToggle.replaceWith(showArchiveToggle.cloneNode(true));
+                // Ambil referensi baru ke toggle
+                const newToggle = document.getElementById('show-archive-toggle'); 
+                if(newToggle) {
+                    newToggle.addEventListener('change', () => {
+                        console.log("Toggle arsip diubah.");
+                        renderKanbanBoard(userProposals); // Panggil render ulang dengan data yang sama
+                    });
+                }
+            }
+
         } catch (error) {
             console.error("Error ambil/render proposal:", error);
              if(kanbanContainer) kanbanContainer.innerHTML = `<p class="text-red-500">Gagal muat data: ${error.message}.</p>`;
@@ -426,24 +446,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Render Papan Kanban ---
+    // === DIPERBARUI: Logika untuk menyembunyikan arsip ===
     function renderKanbanBoard(proposals) {
         if(!kanbanContainer) return; 
         kanbanContainer.innerHTML = ''; 
+
+        // Cek status toggle arsip
+        const showArchive = showArchiveToggle ? showArchiveToggle.checked : false;
+        console.log(`Render Kanban, Tampilkan Arsip: ${showArchive}`);
         
         const proposalsByStatus = {};
-        Object.keys(statusConfig).forEach(status => proposalsByStatus[status] = []);
+        Object.keys(statusConfig).forEach(status => {
+             // JANGAN buat grup status "Diarsipkan" jika toggle tidak aktif
+             if (status === "Diarsipkan" && !showArchive) {
+                 return; // Lewati status ini
+             }
+            proposalsByStatus[status] = [];
+        });
         
         proposals.forEach(p => {
             const statusTrimmed = p.Status ? p.Status.trim() : null;
+            
+            // Cek jika status ada di grup yang kita buat
             if (statusTrimmed && proposalsByStatus[statusTrimmed] !== undefined) { 
                 proposalsByStatus[statusTrimmed].push(p);
-            } else if (statusTrimmed) {
+            } 
+            // Handle status tidak dikenal (bukan Diarsipkan)
+            else if (statusTrimmed && statusTrimmed !== "Diarsipkan") {
                 console.warn(`Status "${statusTrimmed}" tidak dikenal.`);
                 if (!proposalsByStatus['Lainnya']) proposalsByStatus['Lainnya'] = { proposals: [], title: 'Status Lainnya', color: 'border-gray-500' };
                 proposalsByStatus['Lainnya'].proposals.push(p);
             }
+            // Proposal dengan status "Diarsipkan" akan otomatis terabaikan jika 'showArchive' false
         });
 
+        // Loop melalui proposalsByStatus (yang sekarang mungkin tidak punya key "Diarsipkan")
         Object.keys(proposalsByStatus).forEach(statusKey => {
              const isOtherStatus = statusKey === 'Lainnya';
              const columnConfig = isOtherStatus ? proposalsByStatus[statusKey] : statusConfig[statusKey];
@@ -708,7 +745,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // === FUNGSI FETCH DIPERBARUI ===
    async function fetchData(url) {
         try {
-            // Tambahkan cache-busting parameter unik
             const cacheBustUrl = `${url}${url.includes('?') ? '&' : '?'}t=${new Date().getTime()}`;
             const response = await fetch(cacheBustUrl, { cache: "no-store" }); 
 
@@ -721,7 +757,7 @@ document.addEventListener('DOMContentLoaded', () => {
                          if (match) {
                              errorBody = `Apps Script Error: ${match[0].replace(/<\/?pre>/g,'').trim()}`;
                          } else {
-                              const genericMatch = text.match(/<div class.*="errorMessage">(.*?)<\/div>/s); // Dibuat lebih umum
+                              const genericMatch = text.match(/<div class.*="errorMessage">(.*?)<\/div>/s); 
                               errorBody = `Apps Script Error: ${genericMatch ? genericMatch[1].trim() : text.substring(0, 150)}`;
                          }
                      } else { errorBody += `: ${text.substring(0, 150)}`; }
@@ -739,7 +775,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await response.json();
             
-            // Pengecekan error eksplisit dari JSON Apps Script
             if (data && data.status === 'error') { 
                 throw new Error(`API Error: ${data.message}`); 
             }
@@ -753,8 +788,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return data; // Sukses
         } catch (error) {
             console.error(`Fetch error dari ${url}:`, error);
-            // Pastikan kita *selalu* mengembalikan objek dengan properti message
-            const errorMessage = (error && error.message) ? error.message : "Terjadi kesalahan tidak diketahui saat mengambil data.";
+            // === DIPERBARUI: Pastikan error.message ada dan valid ===
+            const errorMessage = (error && error.message) ? error.message : "Kesalahan tidak diketahui saat mengambil data.";
             return { status: 'error', message: errorMessage }; 
         }
     }
@@ -769,7 +804,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if(logoutButton) {
         logoutButton.addEventListener('click', () => {
             console.log("Logout initiated...");
-            sessionStorage.clear(); // Hapus sesi JS
+            sessionStorage.clear(); 
             currentUser = null;     
             
             try {
