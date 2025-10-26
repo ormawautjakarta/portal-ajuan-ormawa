@@ -99,7 +99,7 @@
                         </div>
                     </div>
                     
-                    <!-- === BARU: Tombol Tampilkan Arsip === -->
+                    <!-- === Tombol Tampilkan Arsip === -->
                     <div class="flex justify-end items-center mb-4">
                         <input type="checkbox" id="show-archive-toggle" class="h-4 w-4 rounded text-blue-600 focus:ring-blue-500 border-gray-300">
                         <label for="show-archive-toggle" class="ml-2 block text-sm font-medium text-gray-700">Tampilkan Arsip</label>
@@ -325,6 +325,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // === FUNGSI DIPERBARUI (Penanganan Error) ===
     async function handleLoginSuccess(userObject) {
         if (!userObject || !userObject.email) { console.error("Objek user tidak valid:", userObject); handleLoginFailure("Data user tidak lengkap."); return; }
 
@@ -337,6 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (authorizedUsersData.length === 0) {
                  const userDataResult = await fetchData(USERS_SHEET_URL);
                  
+                 // Pengecekan error yang lebih baik
                  if (userDataResult && userDataResult.status === 'error') {
                      throw new Error(userDataResult.message);
                  }
@@ -393,8 +395,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if(publicTrackingSection) publicTrackingSection.style.display = 'block'; 
     }
     
-    // --- Logika Dasbor ---
-    // === DIPERBARUI: Tambah listener untuk toggle arsip ===
+    // === FUNGSI DIPERBARUI (Listener Arsip) ===
     async function showDashboard() {
         if (!currentUser) { console.error("currentUser null."); handleLoginFailure("Sesi tidak valid."); return; }
         
@@ -418,25 +419,26 @@ document.addEventListener('DOMContentLoaded', () => {
              }
              allProposalsData = proposalDataResult; 
 
-            // Ambil proposal pengguna (data mentah)
             const userProposals = allProposalsData.filter(p => p.Email_Pengaju && p.Email_Pengaju.trim().toLowerCase() === currentUser.email.toLowerCase());
-            console.log(`Menemukan ${userProposals.length} total proposal.`);
+            console.log(`Menemukan ${userProposals.length} proposal.`);
             
             // Render papan KANBAN untuk pertama kali
-            renderKanbanBoard(userProposals);
+            renderKanbanBoard(userProposals); 
 
             // Tambahkan listener ke toggle SETELAH data siap
             if(showArchiveToggle) {
                 // Hapus listener lama jika ada (untuk mencegah duplikat)
-                showArchiveToggle.replaceWith(showArchiveToggle.cloneNode(true));
-                // Ambil referensi baru ke toggle
-                const newToggle = document.getElementById('show-archive-toggle'); 
-                if(newToggle) {
-                    newToggle.addEventListener('change', () => {
-                        console.log("Toggle arsip diubah.");
-                        renderKanbanBoard(userProposals); // Panggil render ulang dengan data yang sama
-                    });
-                }
+                // Ini cara yg lebih aman daripada replaceWith
+                const newToggle = showArchiveToggle.cloneNode(true);
+                showArchiveToggle.parentNode.replaceChild(newToggle, showArchiveToggle);
+                
+                // Tambahkan listener ke toggle BARU
+                newToggle.addEventListener('change', () => {
+                    console.log("Toggle arsip diubah.");
+                    renderKanbanBoard(userProposals); // Panggil render ulang
+                });
+            } else {
+                console.error("Toggle arsip #show-archive-toggle tidak ditemukan.");
             }
 
         } catch (error) {
@@ -445,14 +447,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Render Papan Kanban ---
-    // === DIPERBARUI: Logika untuk menyembunyikan arsip ===
+    // === FUNGSI DIPERBARUI (Logika Arsip) ===
     function renderKanbanBoard(proposals) {
         if(!kanbanContainer) return; 
         kanbanContainer.innerHTML = ''; 
 
-        // Cek status toggle arsip
-        const showArchive = showArchiveToggle ? showArchiveToggle.checked : false;
+        // === DIPERBARUI: Baca toggle DARI DALAM FUNGSI ===
+        // Ini memastikan kita selalu mendapatkan elemen terbaru, terutama setelah cloneNode
+        const toggle = document.getElementById('show-archive-toggle'); 
+        const showArchive = toggle ? toggle.checked : false;
         console.log(`Render Kanban, Tampilkan Arsip: ${showArchive}`);
         
         const proposalsByStatus = {};
@@ -467,20 +470,16 @@ document.addEventListener('DOMContentLoaded', () => {
         proposals.forEach(p => {
             const statusTrimmed = p.Status ? p.Status.trim() : null;
             
-            // Cek jika status ada di grup yang kita buat
             if (statusTrimmed && proposalsByStatus[statusTrimmed] !== undefined) { 
                 proposalsByStatus[statusTrimmed].push(p);
             } 
-            // Handle status tidak dikenal (bukan Diarsipkan)
-            else if (statusTrimmed && statusTrimmed !== "Diarsipkan") {
-                console.warn(`Status "${statusTrimmed}" tidak dikenal.`);
+            else if (statusTrimmed && statusTrimmed !== "Diarsipkan") { // <-- Jangan log "Diarsipkan" sebagai tidak dikenal
+                console.warn(`Status "${statusTrimmed}" (ID: ${p.Proposal_ID}) tidak dikenal atau tidak ada di config.`);
                 if (!proposalsByStatus['Lainnya']) proposalsByStatus['Lainnya'] = { proposals: [], title: 'Status Lainnya', color: 'border-gray-500' };
                 proposalsByStatus['Lainnya'].proposals.push(p);
             }
-            // Proposal dengan status "Diarsipkan" akan otomatis terabaikan jika 'showArchive' false
         });
 
-        // Loop melalui proposalsByStatus (yang sekarang mungkin tidak punya key "Diarsipkan")
         Object.keys(proposalsByStatus).forEach(statusKey => {
              const isOtherStatus = statusKey === 'Lainnya';
              const columnConfig = isOtherStatus ? proposalsByStatus[statusKey] : statusConfig[statusKey];
@@ -497,7 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!proposalsInColumn || proposalsInColumn.length === 0) {
                 columnContent.innerHTML = '<p class="text-sm text-gray-400 italic text-center pt-4">Tidak ada ajuan</p>';
             } else {
-                proposalsInColumn.sort((a, b) => { // Urutkan descending
+                proposalsInColumn.sort((a, b) => { 
                     try {
                         const dateA = a.Tgl_Diajukan ? new Date(a.Tgl_Diajukan) : new Date(0); 
                         const dateB = b.Tgl_Diajukan ? new Date(b.Tgl_Diajukan) : new Date(0);
@@ -738,6 +737,7 @@ document.addEventListener('DOMContentLoaded', () => {
                  } else { console.warn("Gagal parsing tanggal (parts):", dateInput); return String(dateInput); }
             }
             const options = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Jakarta' };
+            // *** DIPERBARUI: Ganti semua titik (.); ***
             return new Intl.DateTimeFormat('id-ID', options).format(date).replace(/\./g, ':'); 
         } catch (error) { console.error("Error format tanggal:", dateInput, error); return String(dateInput); }
     }
@@ -745,6 +745,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // === FUNGSI FETCH DIPERBARUI ===
    async function fetchData(url) {
         try {
+            // Tambahkan cache-busting parameter unik
             const cacheBustUrl = `${url}${url.includes('?') ? '&' : '?'}t=${new Date().getTime()}`;
             const response = await fetch(cacheBustUrl, { cache: "no-store" }); 
 
@@ -757,7 +758,7 @@ document.addEventListener('DOMContentLoaded', () => {
                          if (match) {
                              errorBody = `Apps Script Error: ${match[0].replace(/<\/?pre>/g,'').trim()}`;
                          } else {
-                              const genericMatch = text.match(/<div class.*="errorMessage">(.*?)<\/div>/s); 
+                              const genericMatch = text.match(/<div class.*="errorMessage">(.*?)<\/div>/s); // Dibuat lebih umum
                               errorBody = `Apps Script Error: ${genericMatch ? genericMatch[1].trim() : text.substring(0, 150)}`;
                          }
                      } else { errorBody += `: ${text.substring(0, 150)}`; }
@@ -775,6 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await response.json();
             
+            // Pengecekan error eksplisit dari JSON Apps Script
             if (data && data.status === 'error') { 
                 throw new Error(`API Error: ${data.message}`); 
             }
@@ -788,7 +790,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return data; // Sukses
         } catch (error) {
             console.error(`Fetch error dari ${url}:`, error);
-            // === DIPERBARUI: Pastikan error.message ada dan valid ===
+            // === DIPERBARUI: Pastikan selalu mengembalikan objek error dengan .message ===
             const errorMessage = (error && error.message) ? error.message : "Kesalahan tidak diketahui saat mengambil data.";
             return { status: 'error', message: errorMessage }; 
         }
